@@ -1,0 +1,60 @@
+# -----------------------------------------------------------------------------
+# Ewe-Man — Qué SÍ subir al repo: código fuente, recursos, Gradle (*.kts, wrapper),
+#           settings, manifests, pruebas, documentación del proyecto.
+# Qué NO subir: builds, cachés del IDE, rutas/secretos locales, keystores.
+# -----------------------------------------------------------------------------
+
+# Gradle
+.gradle/
+**/build/
+build/
+
+# Android / local (SDK path, API keys — nunca versionar secretos reales)
+local.properties
+
+# Signing & stores (release nunca en Git)
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+
+# Kotlin
+.kotlin/
+
+# Native / CMake
+.externalNativeBuild/
+.cxx/
+
+# Capturas, outputs locales
+captures/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# Lint / reports
+lint/intermediates/
+lint/generated/
+
+# Profiling
+*.hprof
+
+# Jetpack / inspection
+*.iml
+.idea/
+# Descomenta la siguiente línea si quieres versionar codeStyle del equipo:
+# !/.idea/codeStyles/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Fastlane (credenciales locales)
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output/
