@@ -2,6 +2,7 @@ package com.ares.ewe_man.data.repository
 
 import com.ares.ewe_man.data.remote.api.DobbyGoApi
 import com.ares.ewe_man.data.remote.model.DeliveryOrderDto
+import com.ares.ewe_man.data.remote.model.UpdateDeliveryEtaRequest
 import com.ares.ewe_man.domain.repository.OrderRepository
 import javax.inject.Inject
 
@@ -60,6 +61,15 @@ class OrderRepositoryImpl @Inject constructor(
     override suspend fun updateLocation(lat: Double, lng: Double): Result<Unit> {
         return try {
             api.updateLocation(com.ares.ewe_man.data.remote.model.UpdateLocationRequest(lat = lat, lng = lng))
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateDeliveryEta(orderId: String, estimatedDeliveryMinutes: Int): Result<Unit> {
+        return try {
+            api.updateDeliveryEta(orderId, UpdateDeliveryEtaRequest(estimatedDeliveryMinutes))
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

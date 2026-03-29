@@ -19,4 +19,7 @@ interface OrderRepository {
 
     /** Report current location to backend so the customer can see it on the tracking map. */
     suspend fun updateLocation(lat: Double, lng: Double): Result<Unit>
+
+    /** Persist driving ETA (minutes) for the customer app while this order is ON_DELIVERY. */
+    suspend fun updateDeliveryEta(orderId: String, estimatedDeliveryMinutes: Int): Result<Unit>
 }

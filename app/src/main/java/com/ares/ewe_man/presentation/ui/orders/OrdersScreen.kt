@@ -7,11 +7,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -20,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
@@ -33,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.ares.ewe_man.data.remote.model.DeliveryOrderDto
 import com.ares.ewe_man.presentation.viewmodel.orders.OrdersTab
@@ -91,9 +96,10 @@ fun OrdersScreen(
     }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(uiState.errorMessage) {
-        uiState.errorMessage?.let { msg ->
-            snackbarHostState.showSnackbar(msg)
+    LaunchedEffect(uiState.errorMessage, uiState.orders.size) {
+        val msg = uiState.errorMessage ?: return@LaunchedEffect
+        if (uiState.orders.isNotEmpty()) {
+            snackbarHostState.showSnackbar(message = msg, duration = SnackbarDuration.Long)
             viewModel.clearError()
         }
     }
@@ -135,41 +141,71 @@ fun OrdersScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)
-        ) {
-            if (uiState.isLoading && uiState.orders.isEmpty()) {
-                item {
-                    Box(
+        val contentModifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+        when {
+            uiState.isLoading && uiState.orders.isEmpty() -> {
+                Box(
+                    modifier = contentModifier,
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+            uiState.errorMessage != null && uiState.orders.isEmpty() -> {
+                Box(
+                    modifier = contentModifier,
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
+                            .widthIn(max = 400.dp)
+                            .padding(horizontal = 24.dp)
                     ) {
-                        CircularProgressIndicator()
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = uiState.errorMessage!!,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { viewModel.loadOrders() }) {
+                                Text("Reintentar")
+                            }
+                        }
                     }
                 }
-            } else if (uiState.orders.isEmpty()) {
-                item {
-                    Text(
-                        text = emptyMessage(uiState.selectedTab),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp)
-                    )
-                }
-            } else {
-                items(uiState.orders, key = { it.id }) { order ->
-                    OrderCard(
-                        order = order,
-                        onClick = { onOrderClick(order.id) }
-                    )
+            }
+            else -> {
+                LazyColumn(
+                    modifier = contentModifier,
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)
+                ) {
+                    if (uiState.orders.isEmpty()) {
+                        item {
+                            Text(
+                                text = emptyMessage(uiState.selectedTab),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp)
+                            )
+                        }
+                    } else {
+                        items(uiState.orders, key = { it.id }) { order ->
+                            OrderCard(
+                                order = order,
+                                onClick = { onOrderClick(order.id) }
+                            )
+                        }
+                    }
                 }
             }
         }

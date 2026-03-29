@@ -3,8 +3,10 @@ package com.ares.ewe_man.presentation.viewmodel.deliverymap
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ares.ewe_man.core.network.toUserFacingMessage
 import com.ares.ewe_man.data.location.LocationProvider
 import com.ares.ewe_man.domain.repository.DirectionsRepository
+import com.ares.ewe_man.domain.repository.DrivingRouteInfo
 import com.ares.ewe_man.domain.repository.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import com.google.android.gms.maps.model.LatLng
@@ -70,6 +72,7 @@ class DeliveryMapViewModel @Inject constructor(
     private var lastRouteFetchAt = 0L
     private var previousLatLng: LatLng? = null
     private var smoothedHeading: Float = 0f
+    private var lastPostedEtaMinutes: Int? = null
 
     init {
         loadData()
@@ -83,16 +86,25 @@ class DeliveryMapViewModel @Inject constructor(
     fun loadData() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-            val order = orderRepository.getOrderById(orderId).getOrNull()
-            val deliveryLat = order?.lat
-            val deliveryLng = order?.lng
+            val order = orderRepository.getOrderById(orderId).fold(
+                onSuccess = { it },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = e.toUserFacingMessage()
+                    )
+                    return@launch
+                }
+            )
+            val deliveryLat = order.lat
+            val deliveryLng = order.lng
             val deliveryLatLng = if (deliveryLat != null && deliveryLng != null) {
                 LatLng(deliveryLat, deliveryLng)
             } else null
             destinationLatLng = deliveryLatLng
             _uiState.value = _uiState.value.copy(
                 deliveryLatLng = deliveryLatLng,
-                deliveryAddress = order?.deliveryAddress
+                deliveryAddress = order.deliveryAddress
             )
             locationProvider.getCurrentLocation()
                 .onSuccess { update ->
@@ -142,6 +154,7 @@ class DeliveryMapViewModel @Inject constructor(
                         etaIsApproximate = false,
                         errorMessage = null
                     )
+                    pushEtaMinutesFromRoute(info, origin, destination)
                 }
                 .onFailure {
                     val meters = distanceInMeters(origin, destination)
@@ -156,7 +169,36 @@ class DeliveryMapViewModel @Inject constructor(
                             _uiState.value.errorMessage
                         }
                     )
+                    pushEtaMinutesFromRoughDistance(meters)
                 }
+        }
+    }
+
+    private fun pushEtaMinutesFromRoute(info: DrivingRouteInfo, origin: LatLng, destination: LatLng) {
+        val maxMin = 24 * 60
+        val sec = info.durationSeconds
+        val minutes = if (sec != null && sec > 0) {
+            ((sec + 59) / 60).coerceAtLeast(1).coerceAtMost(maxMin)
+        } else {
+            val meters = info.distanceMeters?.takeIf { it > 0 }?.toDouble()
+                ?: distanceInMeters(origin, destination)
+            (meters / ROUGH_SPEED_METERS_PER_MIN).roundToInt().coerceAtLeast(1).coerceAtMost(maxMin)
+        }
+        pushEtaMinutesToBackend(minutes)
+    }
+
+    private fun pushEtaMinutesFromRoughDistance(meters: Double) {
+        val maxMin = 24 * 60
+        val minutes = (meters / ROUGH_SPEED_METERS_PER_MIN).roundToInt().coerceAtLeast(1).coerceAtMost(maxMin)
+        pushEtaMinutesToBackend(minutes)
+    }
+
+    private fun pushEtaMinutesToBackend(minutes: Int) {
+        if (orderId.isBlank()) return
+        if (lastPostedEtaMinutes == minutes) return
+        lastPostedEtaMinutes = minutes
+        viewModelScope.launch {
+            orderRepository.updateDeliveryEta(orderId, minutes)
         }
     }
 
@@ -221,7 +263,7 @@ class DeliveryMapViewModel @Inject constructor(
                 .onFailure { e ->
                     _uiState.value = _uiState.value.copy(
                         isMarkingDelivered = false,
-                        errorMessage = e.message ?: "Error al marcar como entregado"
+                        errorMessage = e.toUserFacingMessage()
                     )
                 }
         }

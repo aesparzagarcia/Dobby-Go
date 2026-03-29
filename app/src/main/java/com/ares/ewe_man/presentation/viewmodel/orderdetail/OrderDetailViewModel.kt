@@ -3,6 +3,7 @@ package com.ares.ewe_man.presentation.viewmodel.orderdetail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ares.ewe_man.core.network.toUserFacingMessage
 import com.ares.ewe_man.data.remote.model.DeliveryOrderDto
 import com.ares.ewe_man.domain.repository.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -50,7 +51,7 @@ class OrderDetailViewModel @Inject constructor(
                 .onFailure { e ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        errorMessage = e.message ?: "Error al cargar el pedido"
+                        errorMessage = e.toUserFacingMessage()
                     )
                 }
         }
@@ -70,7 +71,7 @@ class OrderDetailViewModel @Inject constructor(
                 .onFailure { e ->
                     _uiState.value = _uiState.value.copy(
                         isAssigning = false,
-                        errorMessage = e.message ?: "Error al asignar el pedido"
+                        errorMessage = e.toUserFacingMessage()
                     )
                 }
         }
@@ -92,7 +93,7 @@ class OrderDetailViewModel @Inject constructor(
                 .onFailure { e ->
                     _uiState.value = _uiState.value.copy(
                         isStartingDelivery = false,
-                        errorMessage = e.message ?: "Error al iniciar el envío"
+                        errorMessage = e.toUserFacingMessage()
                     )
                 }
         }

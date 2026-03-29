@@ -1,5 +1,6 @@
 package com.ares.ewe_man.data.repository
 
+import com.ares.ewe_man.core.network.toUserFacingMessage
 import com.ares.ewe_man.data.local.datastore.SessionManager
 import com.ares.ewe_man.data.session.SessionEventBus
 import com.ares.ewe_man.data.remote.DeliveryLaunchRefreshOutcome
@@ -36,7 +37,7 @@ class AuthRepositoryImpl @Inject constructor(
             val message = parseErrorBody(e) ?: "Error al enviar el código"
             AuthResult.Error(message)
         } catch (e: Exception) {
-            AuthResult.Error(e.message ?: "Error al enviar el código")
+            AuthResult.Error(e.toUserFacingMessage())
         }
     }
 
@@ -62,7 +63,7 @@ class AuthRepositoryImpl @Inject constructor(
             val message = parseErrorBody(e) ?: "Código inválido o expirado"
             AuthResult.Error(message)
         } catch (e: Exception) {
-            AuthResult.Error(e.message ?: "Error al verificar el código")
+            AuthResult.Error(e.toUserFacingMessage())
         }
     }
 

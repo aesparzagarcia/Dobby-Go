@@ -6,6 +6,8 @@ import com.ares.ewe_man.data.remote.model.DeliveryOrderDto
 import com.ares.ewe_man.data.remote.model.DeliveryRequestOtpRequest
 import com.ares.ewe_man.data.remote.model.DeliveryRequestOtpResponse
 import com.ares.ewe_man.data.remote.model.StartDeliveryResponse
+import com.ares.ewe_man.data.remote.model.UpdateDeliveryEtaRequest
+import com.ares.ewe_man.data.remote.model.UpdateDeliveryEtaResponse
 import com.ares.ewe_man.data.remote.model.UpdateLocationRequest
 import com.ares.ewe_man.data.remote.model.UpdateLocationResponse
 import com.ares.ewe_man.data.remote.model.VerifyOtpRequest
@@ -42,4 +44,10 @@ interface DobbyGoApi {
 
     @PATCH("delivery/location")
     suspend fun updateLocation(@Body body: UpdateLocationRequest): UpdateLocationResponse
+
+    @PATCH("delivery/orders/{id}/delivery-eta")
+    suspend fun updateDeliveryEta(
+        @Path("id") orderId: String,
+        @Body body: UpdateDeliveryEtaRequest
+    ): UpdateDeliveryEtaResponse
 }
