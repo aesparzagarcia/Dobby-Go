@@ -9,6 +9,7 @@ data class DeliveryOrderDto(
     @SerializedName("deliveryAddress") val deliveryAddress: String?,
     @SerializedName("lat") val lat: Double?,
     @SerializedName("lng") val lng: Double?,
+    @SerializedName("arrivedAtCustomerAt") val arrivedAtCustomerAt: String? = null,
     @SerializedName("createdAt") val createdAt: String,
     @SerializedName("shopName") val shopName: String?,
     @SerializedName("customerName") val customerName: String?,

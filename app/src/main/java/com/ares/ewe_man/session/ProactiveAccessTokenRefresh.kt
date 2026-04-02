@@ -63,7 +63,8 @@ class ProactiveAccessTokenRefresh @Inject constructor(
     }
 
     private companion object {
-        const val REFRESH_WHEN_SECONDS_LEFT = 3 * 60L
+        /** Access JWT is 15m; refresh before this many seconds remain to avoid 401 bursts. */
+        const val REFRESH_WHEN_SECONDS_LEFT = 10 * 60L
         const val POLL_INTERVAL_MS = 3 * 60 * 1000L
     }
 }

@@ -271,26 +271,48 @@ fun DeliveryMapScreen(
                     )
                 }
                 if (delivery != null && !uiState.isDelivered) {
-                    Button(
-                        onClick = { viewModel.markDelivered(onSuccess = onBack) },
+                    Column(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .fillMaxWidth()
                             .padding(16.dp),
-                        enabled = uiState.isNearDestination && !uiState.isMarkingDelivered
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        if (uiState.isMarkingDelivered) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.height(24.dp).padding(8.dp),
-                                strokeWidth = 2.dp
-                            )
+                        if (!uiState.hasMarkedArrived) {
+                            Button(
+                                onClick = { viewModel.markArrived() },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = uiState.isNearDestination && !uiState.isMarkingArrived
+                            ) {
+                                if (uiState.isMarkingArrived) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.height(24.dp).padding(8.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Text(
+                                        if (uiState.isNearDestination)
+                                            "Llegué"
+                                        else
+                                            "Acércate a la dirección para indicar que llegaste"
+                                    )
+                                }
+                            }
                         } else {
-                            Text(
-                                if (uiState.isNearDestination)
-                                    "Llegué con tu pedido"
-                                else
-                                    "Acércate a la dirección para notificar"
-                            )
+                            Button(
+                                onClick = { viewModel.markDelivered(onSuccess = onBack) },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !uiState.isMarkingDelivered
+                            ) {
+                                if (uiState.isMarkingDelivered) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.height(24.dp).padding(8.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Text("Confirmar entrega")
+                                }
+                            }
                         }
                     }
                 }

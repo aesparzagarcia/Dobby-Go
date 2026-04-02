@@ -52,6 +52,8 @@ android {
     }
     kotlinOptions {
         jvmTarget = "11"
+        // Work around K2 crashes in FirIncompatibleClass* when dependencies ship newer Kotlin metadata.
+        freeCompilerArgs += listOf("-Xskip-metadata-version-check")
     }
     buildFeatures {
         compose = true
@@ -116,4 +118,9 @@ dependencies {
     implementation(libs.play.services.maps)
     implementation(libs.play.services.location)
     implementation(libs.maps.compose)
+
+    implementation(libs.coil)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
+
 }

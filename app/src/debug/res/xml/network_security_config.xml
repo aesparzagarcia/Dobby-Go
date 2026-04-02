@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+      Debug: permite HTTP hacia cualquier host para que imágenes en /uploads funcionen
+      cuando BASE_URL apunta a la IP de tu PC (p. ej. 192.168.x.x), no solo al emulador 10.0.2.2.
+      Release sigue usando main/res/xml/network_security_config.xml (más restrictivo).
+    -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

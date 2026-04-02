@@ -47,6 +47,9 @@ data class DeliveryMapUiState(
     val etaIsApproximate: Boolean = false,
     val isLoading: Boolean = true,
     val isNearDestination: Boolean = false,
+    /** True when backend already has arrival or we just succeeded marking it. */
+    val hasMarkedArrived: Boolean = false,
+    val isMarkingArrived: Boolean = false,
     val isMarkingDelivered: Boolean = false,
     val isDelivered: Boolean = false,
     val errorMessage: String? = null,
@@ -102,9 +105,11 @@ class DeliveryMapViewModel @Inject constructor(
                 LatLng(deliveryLat, deliveryLng)
             } else null
             destinationLatLng = deliveryLatLng
+            val alreadyArrived = !order.arrivedAtCustomerAt.isNullOrBlank()
             _uiState.value = _uiState.value.copy(
                 deliveryLatLng = deliveryLatLng,
-                deliveryAddress = order.deliveryAddress
+                deliveryAddress = order.deliveryAddress,
+                hasMarkedArrived = alreadyArrived
             )
             locationProvider.getCurrentLocation()
                 .onSuccess { update ->
@@ -246,6 +251,26 @@ class DeliveryMapViewModel @Inject constructor(
         } else {
             String.format(Locale.getDefault(), "%.0f m", meters)
         }
+
+    fun markArrived() {
+        if (orderId.isBlank()) return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isMarkingArrived = true, errorMessage = null)
+            orderRepository.markArrivedAtCustomer(orderId)
+                .onSuccess {
+                    _uiState.value = _uiState.value.copy(
+                        isMarkingArrived = false,
+                        hasMarkedArrived = true
+                    )
+                }
+                .onFailure { e ->
+                    _uiState.value = _uiState.value.copy(
+                        isMarkingArrived = false,
+                        errorMessage = e.toUserFacingMessage()
+                    )
+                }
+        }
+    }
 
     fun markDelivered(onSuccess: () -> Unit) {
         if (orderId.isBlank()) return

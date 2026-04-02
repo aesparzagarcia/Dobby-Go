@@ -15,6 +15,9 @@ interface OrderRepository {
 
     suspend fun startDelivery(orderId: String): Result<Unit>
 
+    /** Courier confirms arrival at the customer address (required before [markDelivered]). */
+    suspend fun markArrivedAtCustomer(orderId: String): Result<Unit>
+
     suspend fun markDelivered(orderId: String): Result<Unit>
 
     /** Report current location to backend so the customer can see it on the tracking map. */

@@ -2,7 +2,6 @@ package com.ares.ewe_man
 
 import android.app.Application
 import com.ares.ewe_man.session.ProactiveAccessTokenRefresh
-import com.google.android.gms.maps.MapsInitializer
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -15,6 +14,6 @@ class DobbyGoApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         proactiveAccessTokenRefresh.start()
-        MapsInitializer.initialize(applicationContext, MapsInitializer.Renderer.LATEST) { }
+        MapsInitializerFacade.initializeLatestRenderer(applicationContext)
     }
 }

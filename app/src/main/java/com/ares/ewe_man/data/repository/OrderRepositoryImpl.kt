@@ -49,6 +49,15 @@ class OrderRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun markArrivedAtCustomer(orderId: String): Result<Unit> {
+        return try {
+            api.markArrivedAtCustomer(orderId)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun markDelivered(orderId: String): Result<Unit> {
         return try {
             api.markDelivered(orderId)
