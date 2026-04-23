@@ -9,8 +9,10 @@ object DobbyGoScreens {
     const val Main = "main"
     const val OrderDetail = "orderDetail/{orderId}"
     const val DeliveryMap = "deliveryMap/{orderId}"
+    const val PickupMap = "pickupMap/{orderId}"
 
     fun otp(phone: String) = "otp/${Uri.encode(phone)}"
     fun orderDetail(orderId: String) = "orderDetail/${Uri.encode(orderId)}"
     fun deliveryMap(orderId: String) = "deliveryMap/${Uri.encode(orderId)}"
+    fun pickupMap(orderId: String) = "pickupMap/${Uri.encode(orderId)}"
 }

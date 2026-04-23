@@ -62,6 +62,7 @@ private fun statusLabel(status: String): String = when (status) {
 fun OrderDetailScreen(
     onBack: () -> Unit,
     onOpenMap: (orderId: String) -> Unit = {},
+    onOpenPickupMap: (orderId: String) -> Unit = {},
     viewModel: OrderDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -224,7 +225,11 @@ fun OrderDetailScreen(
                     when {
                         order.status == "READY_FOR_PICKUP" -> {
                             Button(
-                                onClick = { viewModel.assignToMe() },
+                                onClick = {
+                                    viewModel.assignToMe(
+                                        onSuccess = { onOpenPickupMap(viewModel.orderId) }
+                                    )
+                                },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(16.dp),
@@ -242,20 +247,12 @@ fun OrderDetailScreen(
                         }
                         order.status == "ASSIGNED" -> {
                             Button(
-                                onClick = { viewModel.startDelivery(onSuccess = { onOpenMap(viewModel.orderId) }) },
+                                onClick = { onOpenPickupMap(viewModel.orderId) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(16.dp),
-                                enabled = !uiState.isStartingDelivery
+                                    .padding(16.dp)
                             ) {
-                                if (uiState.isStartingDelivery) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.height(24.dp).padding(8.dp),
-                                        strokeWidth = 2.dp
-                                    )
-                                } else {
-                                    Text("Iniciar el envío")
-                                }
+                                Text("Ruta al restaurante")
                             }
                         }
                         order.status == "ON_DELIVERY" -> {

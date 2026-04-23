@@ -17,6 +17,7 @@ import com.ares.ewe_man.presentation.ui.auth.phone.PhoneScreen
 import com.ares.ewe_man.presentation.ui.deliverymap.DeliveryMapScreen
 import com.ares.ewe_man.presentation.ui.main.MainScreen
 import com.ares.ewe_man.presentation.ui.orderdetail.OrderDetailScreen
+import com.ares.ewe_man.presentation.ui.pickupmap.PickupMapScreen
 import com.ares.ewe_man.presentation.ui.splash.SplashScreen
 import com.ares.ewe_man.presentation.viewmodel.nav.OrdersRefreshViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -109,6 +110,30 @@ fun DobbyGoNavigation() {
                     refreshVm.triggerRefresh()
                     navController.navigate(DobbyGoScreens.deliveryMap(orderId)) {
                         popUpTo(DobbyGoScreens.OrderDetail) { inclusive = true }
+                    }
+                },
+                onOpenPickupMap = { orderId ->
+                    refreshVm.triggerRefresh()
+                    navController.navigate(DobbyGoScreens.pickupMap(orderId)) {
+                        popUpTo(DobbyGoScreens.OrderDetail) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(
+            route = DobbyGoScreens.PickupMap,
+            arguments = listOf(navArgument("orderId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val pickupOrderId = backStackEntry.arguments?.getString("orderId").orEmpty()
+            PickupMapScreen(
+                onBack = {
+                    refreshVm.triggerRefresh()
+                    navController.popBackStack()
+                },
+                onComenzarEnvio = {
+                    refreshVm.triggerRefresh()
+                    navController.navigate(DobbyGoScreens.deliveryMap(pickupOrderId)) {
+                        popUpTo(DobbyGoScreens.PickupMap) { inclusive = true }
                     }
                 }
             )

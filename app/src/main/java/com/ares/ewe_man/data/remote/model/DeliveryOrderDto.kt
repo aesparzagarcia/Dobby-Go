@@ -12,6 +12,9 @@ data class DeliveryOrderDto(
     @SerializedName("arrivedAtCustomerAt") val arrivedAtCustomerAt: String? = null,
     @SerializedName("createdAt") val createdAt: String,
     @SerializedName("shopName") val shopName: String?,
+    @SerializedName("shopAddress") val shopAddress: String? = null,
+    @SerializedName("shopLat") val shopLat: Double? = null,
+    @SerializedName("shopLng") val shopLng: Double? = null,
     @SerializedName("customerName") val customerName: String?,
     @SerializedName("items") val items: List<DeliveryOrderItemDto>
 )

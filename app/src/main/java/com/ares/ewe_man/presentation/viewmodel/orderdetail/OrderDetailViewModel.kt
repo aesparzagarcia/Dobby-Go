@@ -17,9 +17,7 @@ data class OrderDetailUiState(
     val order: DeliveryOrderDto? = null,
     val isLoading: Boolean = false,
     val isAssigning: Boolean = false,
-    val isStartingDelivery: Boolean = false,
-    val errorMessage: String? = null,
-    val startDeliverySuccess: Boolean = false
+    val errorMessage: String? = null
 )
 
 @HiltViewModel
@@ -57,7 +55,7 @@ class OrderDetailViewModel @Inject constructor(
         }
     }
 
-    fun assignToMe() {
+    fun assignToMe(onSuccess: () -> Unit = {}) {
         if (orderId.isBlank()) return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isAssigning = true, errorMessage = null)
@@ -67,32 +65,11 @@ class OrderDetailViewModel @Inject constructor(
                         order = _uiState.value.order?.copy(status = "ASSIGNED"),
                         isAssigning = false
                     )
-                }
-                .onFailure { e ->
-                    _uiState.value = _uiState.value.copy(
-                        isAssigning = false,
-                        errorMessage = e.toUserFacingMessage()
-                    )
-                }
-        }
-    }
-
-    fun startDelivery(onSuccess: () -> Unit) {
-        if (orderId.isBlank()) return
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isStartingDelivery = true, errorMessage = null)
-            orderRepository.startDelivery(orderId)
-                .onSuccess {
-                    _uiState.value = _uiState.value.copy(
-                        order = _uiState.value.order?.copy(status = "ON_DELIVERY"),
-                        isStartingDelivery = false,
-                        startDeliverySuccess = true
-                    )
                     onSuccess()
                 }
                 .onFailure { e ->
                     _uiState.value = _uiState.value.copy(
-                        isStartingDelivery = false,
+                        isAssigning = false,
                         errorMessage = e.toUserFacingMessage()
                     )
                 }
