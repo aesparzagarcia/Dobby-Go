@@ -63,8 +63,8 @@ class NetworkModule {
             }
         }
         return OkHttpClient.Builder()
-            .addInterceptor(tokenRefreshInterceptor)
             .addInterceptor(authInterceptor)
+            .addInterceptor(tokenRefreshInterceptor)
             .addInterceptor(loggingInterceptor)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)

@@ -185,7 +185,7 @@ fun DeliveryMapScreen(
                     ),
                     uiSettings = MapUiSettings(
                         myLocationButtonEnabled = false,
-                        zoomControlsEnabled = true
+                        zoomControlsEnabled = false
                     ),
                     onMapLoaded = {
                         if (houseIcon == null) {

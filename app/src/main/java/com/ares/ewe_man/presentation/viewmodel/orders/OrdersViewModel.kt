@@ -4,11 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ares.ewe_man.core.network.toUserFacingMessage
 import com.ares.ewe_man.data.remote.model.DeliveryOrderDto
+import com.ares.ewe_man.domain.repository.DeliveryProfileRepository
 import com.ares.ewe_man.domain.repository.OrderRepository
+import com.ares.ewe_man.realtime.DeliveryOrderRealtimeBus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -19,6 +22,7 @@ enum class OrdersTab {
 }
 
 data class OrdersUiState(
+    val deliveryManDisplayName: String? = null,
     val selectedTab: OrdersTab = OrdersTab.OPEN,
     val orders: List<DeliveryOrderDto> = emptyList(),
     val isLoading: Boolean = false,
@@ -28,14 +32,32 @@ data class OrdersUiState(
 
 @HiltViewModel
 class OrdersViewModel @Inject constructor(
-    private val orderRepository: OrderRepository
+    private val orderRepository: OrderRepository,
+    private val deliveryProfileRepository: DeliveryProfileRepository,
+    private val orderRealtimeBus: DeliveryOrderRealtimeBus,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OrdersUiState())
     val uiState: StateFlow<OrdersUiState> = _uiState.asStateFlow()
 
     init {
+        loadDeliveryManName()
         loadOrders()
+        viewModelScope.launch {
+            orderRealtimeBus.refreshOrders.collect {
+                refresh()
+            }
+        }
+    }
+
+    private fun loadDeliveryManName() {
+        viewModelScope.launch {
+            deliveryProfileRepository.getProfile()
+                .onSuccess { profile ->
+                    val name = profile.name.trim().ifBlank { null }
+                    _uiState.update { it.copy(deliveryManDisplayName = name) }
+                }
+        }
     }
 
     fun setTab(tab: OrdersTab) {

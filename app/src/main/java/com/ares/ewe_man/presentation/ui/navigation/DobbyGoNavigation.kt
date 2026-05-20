@@ -7,6 +7,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavType
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import androidx.compose.runtime.snapshotFlow
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -24,7 +27,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import dagger.hilt.android.EntryPointAccessors
 
 @Composable
-fun DobbyGoNavigation() {
+fun DobbyGoNavigation(
+    pendingOrderId: String? = null,
+    onPendingOrderNavigated: () -> Unit = {},
+) {
     val navController = rememberNavController()
     val context = LocalContext.current
     val sessionEventBus = remember(context) {
@@ -42,6 +48,24 @@ fun DobbyGoNavigation() {
         }
     }
     val refreshVm = hiltViewModel<OrdersRefreshViewModel>()
+
+    LaunchedEffect(pendingOrderId) {
+        val orderId = pendingOrderId ?: return@LaunchedEffect
+        snapshotFlow { navController.currentBackStackEntry?.destination?.route }
+            .filter { route ->
+                route != null &&
+                    route != DobbyGoScreens.Splash &&
+                    route != DobbyGoScreens.Phone &&
+                    !route.startsWith("otp")
+            }
+            .first()
+        navController.navigate(DobbyGoScreens.orderDetail(orderId)) {
+            launchSingleTop = true
+        }
+        refreshVm.triggerRefresh()
+        onPendingOrderNavigated()
+    }
+
     NavHost(
         navController = navController,
         startDestination = DobbyGoScreens.Splash

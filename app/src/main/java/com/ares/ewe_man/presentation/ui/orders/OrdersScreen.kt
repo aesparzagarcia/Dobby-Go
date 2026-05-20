@@ -46,12 +46,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-private fun tabTitle(tab: OrdersTab): String = when (tab) {
-    OrdersTab.OPEN -> "Pedidos"
-    OrdersTab.ASSIGNED -> "Mis asignados"
-    OrdersTab.CLOSED -> "Cerrados"
-}
-
 private fun tabLabel(tab: OrdersTab): String = when (tab) {
     OrdersTab.OPEN -> "Abiertos"
     OrdersTab.ASSIGNED -> "Asignados"
@@ -104,11 +98,25 @@ fun OrdersScreen(
         }
     }
 
+    val deliveryManLabel = uiState.deliveryManDisplayName?.takeIf { it.isNotBlank() } ?: "Repartidor"
+
     Scaffold(
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 TopAppBar(
-                    title = { Text(tabTitle(uiState.selectedTab)) },
+                    title = {
+                        Column {
+                            Text(
+                                text = deliveryManLabel,
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                            Text(
+                                text = "Pedidos",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
                     actions = {
                         IconButton(
                             onClick = { viewModel.refresh() },

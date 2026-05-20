@@ -16,7 +16,10 @@ import com.ares.ewe_man.data.remote.model.UpdateLocationRequest
 import com.ares.ewe_man.data.remote.model.UpdateLocationResponse
 import com.ares.ewe_man.data.remote.model.VerifyOtpRequest
 import com.ares.ewe_man.data.remote.model.VerifyOtpResponse
+import com.ares.ewe_man.data.remote.model.FirebaseTokenResponse
+import com.ares.ewe_man.data.remote.model.RegisterPushDeviceRequest
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -30,6 +33,15 @@ interface DobbyGoApi {
 
     @POST("auth/delivery/verify-otp")
     suspend fun verifyOtp(@Body body: VerifyOtpRequest): VerifyOtpResponse
+
+    @POST("delivery/push-device")
+    suspend fun registerPushDevice(@Body body: RegisterPushDeviceRequest)
+
+    @DELETE("delivery/push-device")
+    suspend fun unregisterPushDevice()
+
+    @POST("delivery/firebase-token")
+    suspend fun getFirebaseCustomToken(): FirebaseTokenResponse
 
     @GET("delivery/profile")
     suspend fun getDeliveryProfile(): DeliveryProfileDto

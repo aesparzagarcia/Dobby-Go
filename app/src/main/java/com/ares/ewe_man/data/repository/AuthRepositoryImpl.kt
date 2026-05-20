@@ -11,6 +11,7 @@ import com.ares.ewe_man.data.remote.model.ErrorResponse
 import com.ares.ewe_man.data.remote.model.VerifyOtpRequest
 import com.ares.ewe_man.domain.model.AuthResult
 import com.ares.ewe_man.domain.repository.AuthRepository
+import com.ares.ewe_man.realtime.DeliveryRealtimeCoordinator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import retrofit2.HttpException
@@ -21,6 +22,7 @@ class AuthRepositoryImpl @Inject constructor(
     private val sessionManager: SessionManager,
     private val deliveryTokenRefreshService: DeliveryTokenRefreshService,
     private val sessionEventBus: SessionEventBus,
+    private val deliveryRealtimeCoordinator: DeliveryRealtimeCoordinator,
 ) : AuthRepository {
 
     override val isLoggedIn: Flow<Boolean> = sessionManager.isLoggedIn
@@ -58,6 +60,7 @@ class AuthRepositoryImpl @Inject constructor(
                 sessionManager.saveSession(token, refresh, deliveryManId)
             } ?: sessionManager.saveSession(token, refresh, null)
             sessionEventBus.resetExpiredGate()
+            deliveryRealtimeCoordinator.onSessionReady()
             AuthResult.Success(Unit)
         } catch (e: HttpException) {
             val message = parseErrorBody(e) ?: "Código inválido o expirado"
@@ -68,6 +71,7 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun logout() {
+        deliveryRealtimeCoordinator.onLogout()
         sessionManager.clearSession()
     }
 
@@ -78,6 +82,8 @@ class AuthRepositoryImpl @Inject constructor(
             DeliveryLaunchRefreshOutcome.Skipped,
             DeliveryLaunchRefreshOutcome.Refreshed,
             DeliveryLaunchRefreshOutcome.Unchanged -> true
+        }.also { ok ->
+            if (ok) deliveryRealtimeCoordinator.onSessionReady()
         }
     }
 

@@ -7,6 +7,7 @@ plugins {
     id("com.google.dagger.hilt.android")
     id("kotlin-kapt")
     id("kotlinx-serialization")
+    id("com.google.gms.google-services")
 }
 
 // Load local.properties so MAPS_API_KEY is available (Gradle does not load it by default)
@@ -32,7 +33,13 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:3001/api/\"")
+        // Local API: default LAN IP = physical device on same WiFi. Emulator: DEV_API_HOST=10.0.2.2 in gradle.properties
+        // USB + adb reverse tcp:3001 tcp:3001 → DEV_API_HOST=127.0.0.1. Path must end with /api/.
+        val devApiHost = (project.findProperty("DEV_API_HOST") as String?)?.trim()?.takeIf { it.isNotBlank() }
+            ?: "192.168.1.4"
+        val devApiPort = (project.findProperty("DEV_API_PORT") as String?)?.trim()?.takeIf { it.isNotBlank() }
+            ?: "3001"
+        buildConfigField("String", "BASE_URL", "\"http://$devApiHost:$devApiPort/api/\"")
         buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
@@ -123,4 +130,8 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
 
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
 }
