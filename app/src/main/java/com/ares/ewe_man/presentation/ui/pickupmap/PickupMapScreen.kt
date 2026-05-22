@@ -1,6 +1,9 @@
 package com.ares.ewe_man.presentation.ui.pickupmap
 
+import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +31,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,8 +42,10 @@ import androidx.compose.ui.unit.dp
 import java.util.Locale
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.ares.ewe_man.R
 import com.ares.ewe_man.presentation.viewmodel.pickupmap.PickupMapViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -54,6 +61,18 @@ import com.google.maps.android.compose.rememberCameraPositionState
 private const val FOLLOW_ZOOM = 17f
 private const val NAVIGATION_TILT_DEG = 58f
 private const val DRIVER_ICON_ROTATION_OFFSET_DEG = 0f
+private const val MARKER_ICON_SIZE_DP = 48
+
+private fun bitmapDescriptorFromRes(context: Context, resId: Int, sizeDp: Int = MARKER_ICON_SIZE_DP): BitmapDescriptor? {
+    val drawable = ContextCompat.getDrawable(context, resId) ?: return null
+    val density = context.resources.displayMetrics.density
+    val sizePx = (sizeDp * density).toInt()
+    drawable.setBounds(0, 0, sizePx, sizePx)
+    val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    drawable.draw(canvas)
+    return BitmapDescriptorFactory.fromBitmap(bitmap)
+}
 private fun formatStraightLineDistance(meters: Double): String =
     if (meters >= 1000) {
         String.format(Locale.getDefault(), "%.1f km", meters / 1000.0)
@@ -110,6 +129,12 @@ fun PickupMapScreen(
     val pickup = uiState.pickupLatLng
     val current = uiState.currentLocation
     val riderMarkerState = remember { MarkerState(LatLng(0.0, 0.0)) }
+    var shopIcon by remember { mutableStateOf<BitmapDescriptor?>(null) }
+    LaunchedEffect(Unit) {
+        if (shopIcon == null) {
+            shopIcon = bitmapDescriptorFromRes(context, R.drawable.ic_shop)
+        }
+    }
 
     LaunchedEffect(current?.latitude, current?.longitude, uiState.headingDegrees) {
         current?.let { latLng ->
@@ -181,9 +206,10 @@ fun PickupMapScreen(
                     pickup?.let { latLng ->
                         Marker(
                             state = MarkerState(position = latLng),
-                            title = uiState.pickupTitle ?: "Recoger pedido",
+                            title = uiState.pickupTitle ?: "Restaurante",
                             snippet = uiState.pickupAddress,
-                            icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE)
+                            icon = shopIcon
+                                ?: bitmapDescriptorFromRes(context, R.drawable.ic_shop),
                         )
                     }
                     if (current != null) {
