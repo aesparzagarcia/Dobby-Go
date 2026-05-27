@@ -23,6 +23,8 @@ enum class OrdersTab {
 
 data class OrdersUiState(
     val deliveryManDisplayName: String? = null,
+    val profilePhotoUrl: String? = null,
+    val connectionStatus: String = "OFFLINE",
     val selectedTab: OrdersTab = OrdersTab.OPEN,
     val orders: List<DeliveryOrderDto> = emptyList(),
     val isLoading: Boolean = false,
@@ -55,9 +57,19 @@ class OrdersViewModel @Inject constructor(
             deliveryProfileRepository.getProfile()
                 .onSuccess { profile ->
                     val name = profile.name.trim().ifBlank { null }
-                    _uiState.update { it.copy(deliveryManDisplayName = name) }
+                    _uiState.update {
+                        it.copy(
+                            deliveryManDisplayName = name,
+                            profilePhotoUrl = profile.profilePhotoUrl,
+                            connectionStatus = profile.status,
+                        )
+                    }
                 }
         }
+    }
+
+    fun refreshProfileHeader() {
+        loadDeliveryManName()
     }
 
     fun setTab(tab: OrdersTab) {

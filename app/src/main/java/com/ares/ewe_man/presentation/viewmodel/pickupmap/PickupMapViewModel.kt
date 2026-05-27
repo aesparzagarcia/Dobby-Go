@@ -35,6 +35,7 @@ data class PickupMapUiState(
     val pickupAddress: String? = null,
     /** Cliente al que se entregará el pedido (tras recoger en el restaurante). */
     val customerName: String? = null,
+    val customerLastName: String? = null,
     val currentLocation: LatLng? = null,
     /** Distancia en línea recta al punto de recogida; null si falta ubicación o tienda. */
     val distanceToPickupMeters: Double? = null,
@@ -99,7 +100,8 @@ class PickupMapViewModel @Inject constructor(
                 pickupLatLng = pickupLatLng,
                 pickupTitle = title,
                 pickupAddress = order.shopAddress,
-                customerName = order.customerName
+                customerName = order.customerName,
+                customerLastName = order.customerLastName,
             )
             locationProvider.getCurrentLocation()
                 .onSuccess { update ->

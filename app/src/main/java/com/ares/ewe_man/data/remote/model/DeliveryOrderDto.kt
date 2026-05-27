@@ -6,6 +6,7 @@ data class DeliveryOrderDto(
     @SerializedName("id") val id: String,
     @SerializedName("status") val status: String,
     @SerializedName("total") val total: Double,
+    @SerializedName("deliveryFee") val deliveryFee: Double = 0.0,
     @SerializedName("deliveryAddress") val deliveryAddress: String?,
     @SerializedName("lat") val lat: Double?,
     @SerializedName("lng") val lng: Double?,
@@ -16,6 +17,7 @@ data class DeliveryOrderDto(
     @SerializedName("shopLat") val shopLat: Double? = null,
     @SerializedName("shopLng") val shopLng: Double? = null,
     @SerializedName("customerName") val customerName: String?,
+    @SerializedName("customerLastName") val customerLastName: String? = null,
     @SerializedName("items") val items: List<DeliveryOrderItemDto>
 )
 
@@ -23,5 +25,6 @@ data class DeliveryOrderItemDto(
     @SerializedName("productId") val productId: String,
     @SerializedName("productName") val productName: String?,
     @SerializedName("quantity") val quantity: Int,
-    @SerializedName("price") val price: Double
+    @SerializedName("price") val price: Double,
+    @SerializedName("imageUrl") val imageUrl: String? = null,
 )
