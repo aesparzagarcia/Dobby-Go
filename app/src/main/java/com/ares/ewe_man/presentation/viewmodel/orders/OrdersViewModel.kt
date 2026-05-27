@@ -27,6 +27,9 @@ data class OrdersUiState(
     val connectionStatus: String = "OFFLINE",
     val selectedTab: OrdersTab = OrdersTab.OPEN,
     val orders: List<DeliveryOrderDto> = emptyList(),
+    /** True si ya tiene un pedido ASSIGNED u ON_DELIVERY — bloquea tomar otros abiertos. */
+    val hasActiveOrder: Boolean = false,
+    val activeOrderId: String? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val isRefreshing: Boolean = false
@@ -45,10 +48,28 @@ class OrdersViewModel @Inject constructor(
     init {
         loadDeliveryManName()
         loadOrders()
+        refreshActiveOrderLock()
         viewModelScope.launch {
             orderRealtimeBus.refreshOrders.collect {
                 refresh()
+                refreshActiveOrderLock()
             }
+        }
+    }
+
+    fun refreshActiveOrderLock() {
+        viewModelScope.launch { refreshActiveOrderLockSync() }
+    }
+
+    private suspend fun refreshActiveOrderLockSync() {
+        val assigned = orderRepository.getOrdersByStatus("ASSIGNED").getOrNull().orEmpty()
+        val inProgress = orderRepository.getOrdersByStatus("ON_DELIVERY").getOrNull().orEmpty()
+        val active = (assigned + inProgress).sortedByDescending { it.createdAt }
+        _uiState.update {
+            it.copy(
+                hasActiveOrder = active.isNotEmpty(),
+                activeOrderId = active.firstOrNull()?.id,
+            )
         }
     }
 
@@ -62,6 +83,7 @@ class OrdersViewModel @Inject constructor(
                             deliveryManDisplayName = name,
                             profilePhotoUrl = profile.profilePhotoUrl,
                             connectionStatus = profile.status,
+                            hasActiveOrder = profile.hasActiveOrder,
                         )
                     }
                 }
@@ -81,6 +103,7 @@ class OrdersViewModel @Inject constructor(
     fun loadOrders() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            refreshActiveOrderLockSync()
             loadOrdersForTab(_uiState.value.selectedTab)
                 .onSuccess { list ->
                     _uiState.value = _uiState.value.copy(
@@ -115,6 +138,7 @@ class OrdersViewModel @Inject constructor(
     fun refresh() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isRefreshing = true)
+            refreshActiveOrderLockSync()
             loadOrdersForTab(_uiState.value.selectedTab)
                 .onSuccess { list ->
                     _uiState.value = _uiState.value.copy(orders = list, isRefreshing = false)

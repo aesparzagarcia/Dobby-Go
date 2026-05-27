@@ -59,6 +59,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.drawBehind
@@ -268,6 +269,11 @@ fun OrdersScreen(
                             subtitle = tabSectionSubtitle(uiState.selectedTab, uiState.orders.size),
                         )
                     }
+                    if (uiState.selectedTab == OrdersTab.OPEN && uiState.hasActiveOrder) {
+                        item {
+                            ActiveOrderLockBanner(onGoToAssigned = { viewModel.setTab(OrdersTab.ASSIGNED) })
+                        }
+                    }
                     if (uiState.orders.isEmpty()) {
                         item {
                             Text(
@@ -282,8 +288,11 @@ fun OrdersScreen(
                         }
                     } else {
                         items(uiState.orders, key = { it.id }) { order ->
+                            val openLocked =
+                                uiState.selectedTab == OrdersTab.OPEN && uiState.hasActiveOrder
                             DeliveryOrderCard(
                                 order = order,
+                                enabled = !openLocked,
                                 onClick = { onOrderClick(order.id) },
                                 modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 2.dp, bottom = 4.dp),
                             )
@@ -465,6 +474,42 @@ private fun OrdersTabRow(
 }
 
 @Composable
+private fun ActiveOrderLockBanner(onGoToAssigned: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = DobbyGoColors.Orange.copy(alpha = 0.12f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, DobbyGoColors.Orange.copy(alpha = 0.35f)),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = "Tienes un pedido en curso",
+                fontWeight = FontWeight.SemiBold,
+                color = DobbyGoColors.TextPrimary,
+                fontSize = 14.sp,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Los pedidos disponibles están bloqueados hasta que termines el actual.",
+                style = MaterialTheme.typography.bodySmall,
+                color = DobbyGoColors.TextSecondary,
+                lineHeight = 18.sp,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Ver pedido en curso",
+                modifier = Modifier.clickable(onClick = onGoToAssigned),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = DobbyGoColors.Purple,
+            )
+        }
+    }
+}
+
+@Composable
 private fun OrdersSectionHeader(subtitle: String) {
     Text(
         text = subtitle,
@@ -480,6 +525,7 @@ private fun OrdersSectionHeader(subtitle: String) {
 private fun DeliveryOrderCard(
     order: DeliveryOrderDto,
     onClick: () -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     var expanded by rememberSaveable(order.id) { mutableStateOf(false) }
@@ -492,10 +538,12 @@ private fun DeliveryOrderCard(
         ?: ("Sin dirección" to null)
 
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .alpha(if (enabled) 1f else 0.55f),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = DobbyGoColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (enabled) 2.dp else 0.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Column(
@@ -661,14 +709,18 @@ private fun DeliveryOrderCard(
 
                     Button(
                         onClick = onClick,
+                        enabled = enabled,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = DobbyGoColors.Purple),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DobbyGoColors.Purple,
+                            disabledContainerColor = DobbyGoColors.Border,
+                        ),
                     ) {
                         Text(
-                            text = "Ver detalles del pedido",
+                            text = if (enabled) "Ver detalles del pedido" else "No disponible",
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White,
                         )

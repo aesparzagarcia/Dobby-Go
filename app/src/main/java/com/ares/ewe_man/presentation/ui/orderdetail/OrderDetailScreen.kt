@@ -142,6 +142,8 @@ fun OrderDetailScreen(
                 OrderDetailBottomActions(
                     order = order,
                     isAssigning = uiState.isAssigning,
+                    assignEnabled = !uiState.assignBlocked,
+                    assignBlockedMessage = uiState.assignBlockedMessage,
                     onAssignToMe = {
                         viewModel.assignToMe(
                             onSuccess = { onOpenPickupMap(viewModel.orderId) },
@@ -186,7 +188,11 @@ fun OrderDetailScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                 ) {
-                    OrderDetailCard(order = uiState.order!!)
+                    OrderDetailCard(
+                        order = uiState.order!!,
+                        assignBlocked = uiState.assignBlocked,
+                        assignBlockedMessage = uiState.assignBlockedMessage,
+                    )
                 }
             }
         }
@@ -224,7 +230,11 @@ private fun OrderDetailTopBar(onBack: () -> Unit) {
 }
 
 @Composable
-private fun OrderDetailCard(order: DeliveryOrderDto) {
+private fun OrderDetailCard(
+    order: DeliveryOrderDto,
+    assignBlocked: Boolean = false,
+    assignBlockedMessage: String? = null,
+) {
     val (statusTextColor, statusBg) = orderStatusColors(order.status)
 
     Card(
@@ -449,8 +459,42 @@ private fun OrderDetailCard(order: DeliveryOrderDto) {
 
             if (order.status == "READY_FOR_PICKUP") {
                 Spacer(modifier = Modifier.height(10.dp))
-                OrderReminderBox()
+                if (assignBlocked && !assignBlockedMessage.isNullOrBlank()) {
+                    AssignBlockedInfoBox(message = assignBlockedMessage)
+                } else {
+                    OrderReminderBox()
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun AssignBlockedInfoBox(message: String) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = DobbyGoColors.Orange.copy(alpha = 0.12f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, DobbyGoColors.Orange.copy(alpha = 0.35f)),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = null,
+                tint = DobbyGoColors.Orange,
+                modifier = Modifier.size(22.dp),
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = DobbyGoColors.TextPrimary,
+                lineHeight = 20.sp,
+            )
         }
     }
 }
@@ -558,6 +602,8 @@ private fun OrderReminderBox() {
 private fun OrderDetailBottomActions(
     order: DeliveryOrderDto,
     isAssigning: Boolean,
+    assignEnabled: Boolean,
+    assignBlockedMessage: String?,
     onAssignToMe: () -> Unit,
     onOpenPickupMap: () -> Unit,
     onOpenMap: () -> Unit,
@@ -568,17 +614,29 @@ private fun OrderDetailBottomActions(
         "ON_DELIVERY" -> Triple("Ver mapa", onOpenMap, false)
         else -> return
     }
+    val actionEnabled = when (order.status) {
+        "READY_FOR_PICKUP" -> assignEnabled && !isAssigning
+        else -> !isAssigning
+    }
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(DobbyGoColors.Surface)
             .navigationBarsPadding()
-            .padding(start = 20.dp, end = 20.dp, top = 8.dp),
+            .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 8.dp),
     ) {
+        if (order.status == "READY_FOR_PICKUP" && !assignEnabled && !assignBlockedMessage.isNullOrBlank()) {
+            Text(
+                text = assignBlockedMessage,
+                style = MaterialTheme.typography.bodySmall,
+                color = DobbyGoColors.TextSecondary,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
         Button(
             onClick = onClick,
-            enabled = !isAssigning,
+            enabled = actionEnabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),

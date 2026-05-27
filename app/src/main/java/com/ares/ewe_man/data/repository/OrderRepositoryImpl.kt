@@ -2,6 +2,8 @@ package com.ares.ewe_man.data.repository
 
 import com.ares.ewe_man.data.remote.api.DobbyGoApi
 import com.ares.ewe_man.data.remote.model.DeliveryOrderDto
+import com.ares.ewe_man.data.remote.model.StartDeliveryRequest
+import com.ares.ewe_man.data.remote.model.VerifyPickupCodeRequest
 import com.ares.ewe_man.data.remote.model.UpdateDeliveryEtaRequest
 import com.ares.ewe_man.domain.repository.OrderRepository
 import javax.inject.Inject
@@ -40,9 +42,18 @@ class OrderRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun startDelivery(orderId: String): Result<Unit> {
+    override suspend fun verifyPickupCode(orderId: String, pickupCode: String): Result<Boolean> {
         return try {
-            api.startDelivery(orderId)
+            val response = api.verifyPickupCode(orderId, VerifyPickupCodeRequest(pickupCode = pickupCode))
+            Result.success(response.valid)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun startDelivery(orderId: String, pickupCode: String): Result<Unit> {
+        return try {
+            api.startDelivery(orderId, StartDeliveryRequest(pickupCode = pickupCode))
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

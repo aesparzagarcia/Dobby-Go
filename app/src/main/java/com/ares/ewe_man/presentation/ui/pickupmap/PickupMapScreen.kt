@@ -38,7 +38,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -60,12 +63,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ares.ewe_man.R
+import kotlin.math.roundToInt
 import com.ares.ewe_man.core.theme.DobbyGoColors
 import com.ares.ewe_man.presentation.viewmodel.pickupmap.PickupMapViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -166,6 +171,12 @@ fun PickupMapScreen(
         uiState.errorMessage?.let { msg ->
             snackbarHostState.showSnackbar(msg)
             viewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.navigateToDelivery.collect {
+            onComenzarEnvio()
         }
     }
 
@@ -358,7 +369,12 @@ fun PickupMapScreen(
                             orderId = viewModel.orderId,
                             customerName = uiState.customerName,
                             customerLastName = uiState.customerLastName,
-                            canStartDelivery = uiState.canStartDelivery,
+                            pickupCodeInput = uiState.pickupCodeInput,
+                            pickupCodeValid = uiState.pickupCodeValid,
+                            isVerifyingPickupCode = uiState.isVerifyingPickupCode,
+                            isAtPickupLocation = uiState.isAtPickupLocation,
+                            distanceToPickupMeters = uiState.distanceToPickupMeters,
+                            onPickupCodeChange = viewModel::onPickupCodeChange,
                             isStartingDelivery = uiState.isStartingDelivery,
                             onStartDelivery = {
                                 viewModel.startDelivery(onSuccess = onComenzarEnvio)
@@ -505,11 +521,19 @@ private fun PickupBottomPanel(
     orderId: String,
     customerName: String?,
     customerLastName: String?,
-    canStartDelivery: Boolean,
+    pickupCodeInput: String,
+    pickupCodeValid: Boolean?,
+    isVerifyingPickupCode: Boolean,
+    isAtPickupLocation: Boolean,
+    distanceToPickupMeters: Double?,
+    onPickupCodeChange: (String) -> Unit,
     isStartingDelivery: Boolean,
     onStartDelivery: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val canStartDelivery = pickupCodeValid == true &&
+        isAtPickupLocation &&
+        !isVerifyingPickupCode
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
@@ -595,6 +619,69 @@ private fun PickupBottomPanel(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            OutlinedTextField(
+                value = pickupCodeInput,
+                onValueChange = onPickupCodeChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Código de la tienda") },
+                placeholder = { Text("6 dígitos") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = DobbyGoColors.Purple,
+                    focusedLabelColor = DobbyGoColors.Purple,
+                    cursorColor = DobbyGoColors.Purple,
+                ),
+            )
+
+            Text(
+                text = "Pide el código en mostrador antes de recoger el pedido.",
+                style = MaterialTheme.typography.bodySmall,
+                color = DobbyGoColors.TextSecondary,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+
+            when {
+                pickupCodeInput.length == 6 && isVerifyingPickupCode -> {
+                    Text(
+                        text = "Verificando código…",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = DobbyGoColors.TextSecondary,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+                pickupCodeInput.length == 6 && pickupCodeValid == false -> {
+                    Text(
+                        text = "Código incorrecto. Verifica con la tienda.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+            }
+
+            val locationHint = when {
+                isAtPickupLocation -> "Estás en el restaurante."
+                distanceToPickupMeters != null -> {
+                    val meters = distanceToPickupMeters.roundToInt()
+                    "Acércate al restaurante (a $meters m, máx. 20 m)."
+                }
+                else -> "Activa tu ubicación para validar que estás en el restaurante."
+            }
+            Text(
+                text = locationHint,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isAtPickupLocation) {
+                    DobbyGoColors.Purple
+                } else {
+                    DobbyGoColors.TextSecondary
+                },
+                modifier = Modifier.padding(top = 8.dp),
+            )
 
             Spacer(modifier = Modifier.height(10.dp))
 

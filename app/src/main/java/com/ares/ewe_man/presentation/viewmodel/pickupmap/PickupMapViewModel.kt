@@ -18,17 +18,19 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 private const val ROUTE_AND_ETA_REFRESH_MS = 30_000L
 private const val ROUGH_SPEED_METERS_PER_MIN = 420.0
-/** Si el repartidor está a esta distancia o menos del punto de recogida, puede iniciar el envío. */
-private const val PICKUP_PROXIMITY_THRESHOLD_METERS = 120.0
-
+/** Margen para habilitar «Comenzar envío» en el restaurante. */
+private const val PICKUP_ARRIVAL_RADIUS_METERS = 20.0
 data class PickupMapUiState(
     val pickupLatLng: LatLng? = null,
     val pickupTitle: String? = null,
@@ -39,7 +41,14 @@ data class PickupMapUiState(
     val currentLocation: LatLng? = null,
     /** Distancia en línea recta al punto de recogida; null si falta ubicación o tienda. */
     val distanceToPickupMeters: Double? = null,
-    val canStartDelivery: Boolean = false,
+    /** Estado del pedido en el servidor (ASSIGNED, ON_DELIVERY, …). */
+    val orderStatus: String? = null,
+    val pickupCodeInput: String = "",
+    /** null = aún no verificado; true/false tras validar con el servidor. */
+    val pickupCodeValid: Boolean? = null,
+    val isVerifyingPickupCode: Boolean = false,
+    /** Dentro de [PICKUP_ARRIVAL_RADIUS_METERS] del restaurante. */
+    val isAtPickupLocation: Boolean = false,
     val isStartingDelivery: Boolean = false,
     val routePoints: List<LatLng> = emptyList(),
     val etaText: String? = null,
@@ -63,7 +72,11 @@ class PickupMapViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(PickupMapUiState())
     val uiState: StateFlow<PickupMapUiState> = _uiState.asStateFlow()
 
+    private val _navigateToDelivery = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val navigateToDelivery: SharedFlow<Unit> = _navigateToDelivery.asSharedFlow()
+
     private var locationPollJob: Job? = null
+    private var verifyPickupCodeJob: Job? = null
     private var lastRouteFetchAt = 0L
     private var previousLatLng: LatLng? = null
     private var smoothedHeading: Float = 0f
@@ -75,6 +88,7 @@ class PickupMapViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         locationPollJob?.cancel()
+        verifyPickupCodeJob?.cancel()
     }
 
     fun loadData() {
@@ -96,12 +110,35 @@ class PickupMapViewModel @Inject constructor(
                 LatLng(shopLat, shopLng)
             } else null
             val title = order.shopName ?: "Restaurante"
+            val status = order.status.uppercase()
+            if (status == "ON_DELIVERY") {
+                _uiState.value = _uiState.value.copy(
+                    orderStatus = status,
+                    isLoading = false,
+                )
+                _navigateToDelivery.tryEmit(Unit)
+                return@launch
+            }
+            if (status != "ASSIGNED") {
+                _uiState.value = _uiState.value.copy(
+                    orderStatus = status,
+                    isLoading = false,
+                    errorMessage = when (status) {
+                        "READY_FOR_PICKUP" ->
+                            "Este pedido aún no está asignado a ti. Vuelve al detalle y pulsa «Asignar a mí»."
+                        else -> "Este pedido no está listo para recoger (estado: $status)."
+                    },
+                )
+                return@launch
+            }
             _uiState.value = _uiState.value.copy(
                 pickupLatLng = pickupLatLng,
                 pickupTitle = title,
                 pickupAddress = order.shopAddress,
                 customerName = order.customerName,
                 customerLastName = order.customerLastName,
+                orderStatus = status,
+                pickupCodeInput = "",
             )
             locationProvider.getCurrentLocation()
                 .onSuccess { update ->
@@ -111,13 +148,13 @@ class PickupMapViewModel @Inject constructor(
                         update.bearingDegrees,
                         update.speedMetersPerSecond
                     )
-                    val (dist, canStart) = proximityFromCurrentPickup(latLng, pickupLatLng)
+                    val dist = distanceToPickupMeters(latLng, pickupLatLng)
                     _uiState.value = _uiState.value.copy(
                         currentLocation = latLng,
                         headingDegrees = heading,
                         isLoading = false,
                         distanceToPickupMeters = dist,
-                        canStartDelivery = canStart
+                        isAtPickupLocation = isWithinPickupRadius(dist),
                     )
                     previousLatLng = latLng
                     orderRepository.updateLocation(latLng.latitude, latLng.longitude)
@@ -188,12 +225,12 @@ class PickupMapViewModel @Inject constructor(
                             update.bearingDegrees,
                             update.speedMetersPerSecond
                         )
-                        val (dist, canStart) = proximityFromCurrentPickup(latLng, destination)
+                        val dist = distanceToPickupMeters(latLng, destination)
                         _uiState.value = _uiState.value.copy(
                             currentLocation = latLng,
                             headingDegrees = heading,
                             distanceToPickupMeters = dist,
-                            canStartDelivery = canStart
+                            isAtPickupLocation = isWithinPickupRadius(dist),
                         )
                         previousLatLng = latLng
                         orderRepository.updateLocation(latLng.latitude, latLng.longitude)
@@ -219,11 +256,46 @@ class PickupMapViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(errorMessage = null)
     }
 
+    fun onPickupCodeChange(raw: String) {
+        val digits = raw.filter { it.isDigit() }.take(6)
+        _uiState.value = _uiState.value.copy(
+            pickupCodeInput = digits,
+            pickupCodeValid = if (digits.length == 6) null else false,
+        )
+        verifyPickupCodeJob?.cancel()
+        if (digits.length != 6 || orderId.isBlank()) return
+        verifyPickupCodeJob = viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isVerifyingPickupCode = true)
+            orderRepository.verifyPickupCode(orderId, digits)
+                .onSuccess { valid ->
+                    _uiState.value = _uiState.value.copy(
+                        isVerifyingPickupCode = false,
+                        pickupCodeValid = valid,
+                    )
+                }
+                .onFailure {
+                    _uiState.value = _uiState.value.copy(
+                        isVerifyingPickupCode = false,
+                        pickupCodeValid = false,
+                    )
+                }
+        }
+    }
+
     fun startDelivery(onSuccess: () -> Unit) {
-        if (orderId.isBlank() || !_uiState.value.canStartDelivery) return
+        val state = _uiState.value
+        val code = state.pickupCodeInput
+        if (orderId.isBlank() ||
+            state.orderStatus != "ASSIGNED" ||
+            code.length != 6 ||
+            state.pickupCodeValid != true ||
+            !state.isAtPickupLocation
+        ) {
+            return
+        }
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isStartingDelivery = true, errorMessage = null)
-            orderRepository.startDelivery(orderId)
+            orderRepository.startDelivery(orderId, code)
                 .onSuccess {
                     _uiState.value = _uiState.value.copy(isStartingDelivery = false)
                     onSuccess()
@@ -237,11 +309,13 @@ class PickupMapViewModel @Inject constructor(
         }
     }
 
-    private fun proximityFromCurrentPickup(current: LatLng, pickup: LatLng?): Pair<Double?, Boolean> {
-        if (pickup == null) return null to false
-        val meters = distanceInMeters(current, pickup)
-        return meters to (meters <= PICKUP_PROXIMITY_THRESHOLD_METERS)
+    private fun distanceToPickupMeters(current: LatLng, pickup: LatLng?): Double? {
+        if (pickup == null) return null
+        return distanceInMeters(current, pickup)
     }
+
+    private fun isWithinPickupRadius(distanceMeters: Double?): Boolean =
+        distanceMeters != null && distanceMeters <= PICKUP_ARRIVAL_RADIUS_METERS
 
     private fun computeHeadingForUpdate(
         latLng: LatLng,

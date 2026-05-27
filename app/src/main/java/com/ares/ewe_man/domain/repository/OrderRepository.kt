@@ -13,7 +13,9 @@ interface OrderRepository {
 
     suspend fun assignOrder(orderId: String): Result<Unit>
 
-    suspend fun startDelivery(orderId: String): Result<Unit>
+    suspend fun verifyPickupCode(orderId: String, pickupCode: String): Result<Boolean>
+
+    suspend fun startDelivery(orderId: String, pickupCode: String): Result<Unit>
 
     /** Courier confirms arrival at the customer address (required before [markDelivered]). */
     suspend fun markArrivedAtCustomer(orderId: String): Result<Unit>

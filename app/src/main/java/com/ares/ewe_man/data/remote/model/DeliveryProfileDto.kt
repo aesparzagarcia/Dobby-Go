@@ -7,6 +7,7 @@ data class DeliveryProfileDto(
     @SerializedName("profile_photo_url") val profilePhotoUrl: String? = null,
     /** OFFLINE | ONLINE | ON_DELIVERY */
     @SerializedName("status") val status: String = "OFFLINE",
+    @SerializedName("has_active_order") val hasActiveOrder: Boolean = false,
     @SerializedName("level_key") val levelKey: String,
     @SerializedName("xp") val xp: Int,
     @SerializedName("xp_at_current_level") val xpAtCurrentLevel: Int,

@@ -9,7 +9,10 @@ import com.ares.ewe_man.data.remote.model.DeliveryStatusRequest
 import com.ares.ewe_man.data.remote.model.DeliveryStatusResponse
 import com.ares.ewe_man.data.remote.model.DeliveryRequestOtpRequest
 import com.ares.ewe_man.data.remote.model.DeliveryRequestOtpResponse
+import com.ares.ewe_man.data.remote.model.StartDeliveryRequest
 import com.ares.ewe_man.data.remote.model.StartDeliveryResponse
+import com.ares.ewe_man.data.remote.model.VerifyPickupCodeRequest
+import com.ares.ewe_man.data.remote.model.VerifyPickupCodeResponse
 import com.ares.ewe_man.data.remote.model.UpdateDeliveryEtaRequest
 import com.ares.ewe_man.data.remote.model.UpdateDeliveryEtaResponse
 import com.ares.ewe_man.data.remote.model.UpdateLocationRequest
@@ -58,8 +61,17 @@ interface DobbyGoApi {
     @PATCH("delivery/orders/{id}/assign")
     suspend fun assignOrder(@Path("id") orderId: String): AssignOrderResponse
 
+    @POST("delivery/orders/{id}/verify-pickup-code")
+    suspend fun verifyPickupCode(
+        @Path("id") orderId: String,
+        @Body body: VerifyPickupCodeRequest,
+    ): VerifyPickupCodeResponse
+
     @PATCH("delivery/orders/{id}/start")
-    suspend fun startDelivery(@Path("id") orderId: String): StartDeliveryResponse
+    suspend fun startDelivery(
+        @Path("id") orderId: String,
+        @Body body: StartDeliveryRequest,
+    ): StartDeliveryResponse
 
     @PATCH("delivery/orders/{id}/arrived")
     suspend fun markArrivedAtCustomer(@Path("id") orderId: String): MarkArrivedResponse
