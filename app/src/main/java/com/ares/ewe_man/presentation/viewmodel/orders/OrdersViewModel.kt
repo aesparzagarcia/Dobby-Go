@@ -74,24 +74,26 @@ class OrdersViewModel @Inject constructor(
     }
 
     private fun loadDeliveryManName() {
-        viewModelScope.launch {
-            deliveryProfileRepository.getProfile()
-                .onSuccess { profile ->
-                    val name = profile.name.trim().ifBlank { null }
-                    _uiState.update {
-                        it.copy(
-                            deliveryManDisplayName = name,
-                            profilePhotoUrl = profile.profilePhotoUrl,
-                            connectionStatus = profile.status,
-                            hasActiveOrder = profile.hasActiveOrder,
-                        )
-                    }
+        viewModelScope.launch { refreshProfileHeaderSync() }
+    }
+
+    private suspend fun refreshProfileHeaderSync() {
+        deliveryProfileRepository.getProfile()
+            .onSuccess { profile ->
+                val name = profile.name.trim().ifBlank { null }
+                _uiState.update {
+                    it.copy(
+                        deliveryManDisplayName = name,
+                        profilePhotoUrl = profile.profilePhotoUrl,
+                        connectionStatus = profile.status,
+                        hasActiveOrder = profile.hasActiveOrder,
+                    )
                 }
-        }
+            }
     }
 
     fun refreshProfileHeader() {
-        loadDeliveryManName()
+        viewModelScope.launch { refreshProfileHeaderSync() }
     }
 
     fun setTab(tab: OrdersTab) {
@@ -138,6 +140,7 @@ class OrdersViewModel @Inject constructor(
     fun refresh() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isRefreshing = true)
+            refreshProfileHeaderSync()
             refreshActiveOrderLockSync()
             loadOrdersForTab(_uiState.value.selectedTab)
                 .onSuccess { list ->

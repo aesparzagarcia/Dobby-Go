@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,6 +48,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -99,109 +102,125 @@ private fun successRateLabel(percent: Int): String = when {
 @Composable
 fun ProfileScreen(
     onLogout: () -> Unit,
+    onConnectionStatusChanged: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scroll = rememberScrollState()
 
+    LaunchedEffect(Unit) {
+        viewModel.connectionStatusUpdated.collect {
+            onConnectionStatusChanged()
+        }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = DobbyGoColors.Background,
+        contentWindowInsets = WindowInsets(0.dp),
     ) { padding ->
-        when {
-            uiState.isLoading && uiState.profile == null -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(color = DobbyGoColors.Purple)
-                }
-            }
-            uiState.errorMessage != null && uiState.profile == null -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        text = uiState.errorMessage!!,
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center,
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = { viewModel.loadProfile() },
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                            containerColor = DobbyGoColors.Purple,
-                        ),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            ProfileScreenHeader(
+                isLoading = uiState.isLoading,
+                onRefresh = { viewModel.loadProfile() },
+            )
+
+            when {
+                uiState.isLoading && uiState.profile == null -> {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Text("Reintentar")
+                        CircularProgressIndicator(color = DobbyGoColors.Purple)
                     }
                 }
-            }
-            else -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .verticalScroll(scroll)
-                        .padding(horizontal = 20.dp),
-                ) {
-                    ProfileScreenHeader(
-                        isLoading = uiState.isLoading,
-                        onRefresh = { viewModel.loadProfile() },
-                    )
-
-                    uiState.profile?.let { profile ->
-                        Spacer(modifier = Modifier.height(16.dp))
-                        ProfileMainCard(
-                            profile = profile,
-                            statusUpdating = uiState.statusUpdating,
-                            onToggleAvailability = { viewModel.setConnectionStatus(it) },
-                        )
-                        Spacer(modifier = Modifier.height(24.dp))
+                uiState.errorMessage != null && uiState.profile == null -> {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
                         Text(
-                            text = "Misiones",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = DobbyGoColors.TextPrimary,
+                            text = uiState.errorMessage!!,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center,
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        profile.missions.forEach { mission ->
-                            ProfileMissionCard(mission = mission)
-                            Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { viewModel.loadProfile() },
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = DobbyGoColors.Purple,
+                            ),
+                        ) {
+                            Text("Reintentar")
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-                    OutlinedButton(
-                        onClick = onLogout,
+                }
+                else -> {
+                    Column(
                         modifier = Modifier
+                            .weight(1f)
                             .fillMaxWidth()
-                            .height(52.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, DobbyGoColors.Purple),
+                            .verticalScroll(scroll)
+                            .padding(horizontal = 20.dp),
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Logout,
-                            contentDescription = null,
-                            tint = DobbyGoColors.Purple,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Cerrar sesión",
-                            fontWeight = FontWeight.SemiBold,
-                            color = DobbyGoColors.Purple,
-                        )
+                        uiState.profile?.let { profile ->
+                            Spacer(modifier = Modifier.height(16.dp))
+                            ProfileMainCard(
+                                profile = profile,
+                                statusUpdating = uiState.statusUpdating,
+                                onToggleAvailability = { viewModel.setConnectionStatus(it) },
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Text(
+                                text = "Misiones",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = DobbyGoColors.TextPrimary,
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            profile.missions.forEachIndexed { index, mission ->
+                                ProfileMissionCard(mission = mission)
+                                if (index < profile.missions.lastIndex) {
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedButton(
+                            onClick = onLogout,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, DobbyGoColors.Purple),
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Logout,
+                                contentDescription = null,
+                                tint = DobbyGoColors.Purple,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Cerrar sesión",
+                                fontWeight = FontWeight.SemiBold,
+                                color = DobbyGoColors.Purple,
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
-                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         }
@@ -216,7 +235,9 @@ private fun ProfileScreenHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 4.dp),
+            .statusBarsPadding()
+            .padding(horizontal = 20.dp)
+            .padding(top = 8.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {

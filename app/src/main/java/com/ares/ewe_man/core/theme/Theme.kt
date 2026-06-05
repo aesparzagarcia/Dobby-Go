@@ -9,17 +9,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val LightColorScheme = lightColorScheme(
-    primary = DobbyGoColors.Purple,
+    primary = DobbyGoColors.Primary,
     onPrimary = Color.White,
-    primaryContainer = DobbyGoColors.PurpleLight,
-    onPrimaryContainer = DobbyGoColors.PurpleDark,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
-    background = DobbyGoColors.Background,
+    primaryContainer = DobbyGoColors.Light,
+    onPrimaryContainer = DobbyGoColors.Dark,
+    secondary = DobbyGoColors.Accent,
+    onSecondary = Color.White,
+    tertiary = DobbyGoColors.Warning,
+    onTertiary = DobbyGoColors.Dark,
+    background = Color.White,
+    onBackground = DobbyGoColors.Dark,
     surface = DobbyGoColors.Surface,
-    onBackground = DobbyGoColors.TextPrimary,
-    onSurface = DobbyGoColors.TextPrimary,
-    onSurfaceVariant = DobbyGoColors.TextSecondary,
+    onSurface = DobbyGoColors.Dark,
+    surfaceVariant = DobbyGoColors.Light,
+    onSurfaceVariant = DobbyGoColors.Dark.copy(alpha = 0.72f),
+    outline = DobbyGoColors.Border,
 )
 
 @Composable
@@ -32,7 +36,6 @@ fun DobbyGoTheme(
             val context = LocalContext.current
             dynamicLightColorScheme(context)
         }
-
         else -> LightColorScheme
     }
 

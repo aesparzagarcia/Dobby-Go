@@ -67,11 +67,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.ares.ewe_man.R
 import com.ares.ewe_man.core.theme.DobbyGoColors
 import com.ares.ewe_man.core.util.splitDeliveryAddressForDisplay
+import com.ares.ewe_man.presentation.ui.map.ObserveMapGesturesDisableFollow
+import com.ares.ewe_man.presentation.ui.map.animateToRider
 import com.ares.ewe_man.presentation.viewmodel.deliverymap.DeliveryMapViewModel
-import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
@@ -83,8 +83,6 @@ import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
 
-private const val FOLLOW_ZOOM = 17f
-private const val NAVIGATION_TILT_DEG = 58f
 private const val DRIVER_ICON_ROTATION_OFFSET_DEG = 0f
 private const val MARKER_ICON_SIZE_DP = 48
 
@@ -157,6 +155,8 @@ fun DeliveryMapScreen(
     }
 
     val cameraPositionState = rememberCameraPositionState()
+    var followRider by remember { mutableStateOf(true) }
+    ObserveMapGesturesDisableFollow(cameraPositionState) { followRider = it }
     val delivery = uiState.deliveryLatLng
     val current = uiState.currentLocation
     val riderMarkerState = remember { MarkerState(LatLng(0.0, 0.0)) }
@@ -170,20 +170,12 @@ fun DeliveryMapScreen(
         }
     }
 
-    LaunchedEffect(current?.latitude, current?.longitude, uiState.headingDegrees) {
+    LaunchedEffect(current?.latitude, current?.longitude, uiState.headingDegrees, followRider) {
         current?.let { latLng ->
             riderMarkerState.position = latLng
-            cameraPositionState.animate(
-                CameraUpdateFactory.newCameraPosition(
-                    CameraPosition.builder()
-                        .target(latLng)
-                        .zoom(FOLLOW_ZOOM)
-                        .bearing(uiState.headingDegrees)
-                        .tilt(NAVIGATION_TILT_DEG)
-                        .build(),
-                ),
-                durationMs = 160,
-            )
+            if (followRider) {
+                cameraPositionState.animateToRider(latLng, uiState.headingDegrees)
+            }
         }
     }
 
@@ -287,16 +279,11 @@ fun DeliveryMapScreen(
                 if (current != null) {
                     Surface(
                         onClick = {
+                            followRider = true
                             scope.launch {
-                                cameraPositionState.animate(
-                                    CameraUpdateFactory.newCameraPosition(
-                                        CameraPosition.builder()
-                                            .target(current)
-                                            .zoom(FOLLOW_ZOOM)
-                                            .bearing(uiState.headingDegrees)
-                                            .tilt(NAVIGATION_TILT_DEG)
-                                            .build(),
-                                    ),
+                                cameraPositionState.animateToRider(
+                                    current,
+                                    uiState.headingDegrees,
                                     durationMs = 300,
                                 )
                             }

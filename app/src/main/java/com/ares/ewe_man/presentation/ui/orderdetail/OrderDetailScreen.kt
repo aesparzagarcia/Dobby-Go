@@ -69,24 +69,10 @@ import com.ares.ewe_man.core.util.splitDeliveryAddressForDisplay
 import com.ares.ewe_man.data.remote.model.DeliveryOrderDto
 import com.ares.ewe_man.data.remote.model.DeliveryOrderItemDto
 import com.ares.ewe_man.presentation.viewmodel.orderdetail.OrderDetailViewModel
-import java.text.SimpleDateFormat
+import com.ares.ewe_man.core.util.OrderDateFormat
 import java.util.Locale
 
-private fun formatOrderDate(createdAt: String): String {
-    return try {
-        val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
-        val date = iso.parse(createdAt) ?: return createdAt
-        SimpleDateFormat("dd/MM/yyyy · HH:mm", Locale.getDefault()).format(date)
-    } catch (_: Exception) {
-        try {
-            val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
-            val date = iso.parse(createdAt) ?: return createdAt
-            SimpleDateFormat("dd/MM/yyyy · HH:mm", Locale.getDefault()).format(date)
-        } catch (_: Exception) {
-            createdAt
-        }
-    }
-}
+private fun formatOrderDate(createdAt: String): String = OrderDateFormat.format(createdAt)
 
 private fun statusLabel(status: String): String = when (status) {
     "READY_FOR_PICKUP" -> "Listo para recoger"

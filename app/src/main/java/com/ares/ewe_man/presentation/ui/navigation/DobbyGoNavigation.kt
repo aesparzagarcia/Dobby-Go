@@ -23,6 +23,7 @@ import com.ares.ewe_man.presentation.ui.orderdetail.OrderDetailScreen
 import com.ares.ewe_man.presentation.ui.pickupmap.PickupMapScreen
 import com.ares.ewe_man.presentation.ui.splash.SplashScreen
 import com.ares.ewe_man.presentation.viewmodel.nav.OrdersRefreshViewModel
+import com.ares.ewe_man.presentation.viewmodel.orders.OrdersViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 import dagger.hilt.android.EntryPointAccessors
 
@@ -109,6 +110,7 @@ fun DobbyGoNavigation(
         }
         composable(DobbyGoScreens.Main) {
             val refreshTrigger by refreshVm.triggerCount.collectAsState(initial = 0)
+            val ordersViewModel: OrdersViewModel = hiltViewModel()
             MainScreen(
                 onLogout = {
                     navController.navigate(DobbyGoScreens.Phone) {
@@ -118,7 +120,8 @@ fun DobbyGoNavigation(
                 onOrderClick = { orderId ->
                     navController.navigate(DobbyGoScreens.orderDetail(orderId))
                 },
-                refreshOrdersTrigger = refreshTrigger
+                refreshOrdersTrigger = refreshTrigger,
+                ordersViewModel = ordersViewModel,
             )
         }
         composable(

@@ -81,7 +81,7 @@ import com.ares.ewe_man.data.remote.model.DeliveryOrderDto
 import com.ares.ewe_man.presentation.ui.profile.resolveProfileImageUrl
 import com.ares.ewe_man.presentation.viewmodel.orders.OrdersTab
 import com.ares.ewe_man.presentation.viewmodel.orders.OrdersViewModel
-import java.text.SimpleDateFormat
+import com.ares.ewe_man.core.util.OrderDateFormat
 import java.util.Locale
 
 private data class OrdersTabVisual(
@@ -127,21 +127,7 @@ private fun homeStatusLabel(status: String): String = when (status.uppercase()) 
     else -> status
 }
 
-private fun formatOrderDate(createdAt: String): String {
-    return try {
-        val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
-        val date = iso.parse(createdAt) ?: return createdAt
-        SimpleDateFormat("dd/MM/yyyy · HH:mm", Locale.getDefault()).format(date)
-    } catch (_: Exception) {
-        try {
-            val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
-            val date = iso.parse(createdAt) ?: return createdAt
-            SimpleDateFormat("dd/MM/yyyy · HH:mm", Locale.getDefault()).format(date)
-        } catch (_: Exception) {
-            createdAt
-        }
-    }
-}
+private fun formatOrderDate(createdAt: String): String = OrderDateFormat.format(createdAt)
 
 private fun orderStatusLabel(status: String): String = when (status) {
     "READY_FOR_PICKUP" -> "Listo para recoger"
@@ -201,101 +187,110 @@ fun OrdersScreen(
         contentWindowInsets = WindowInsets(0.dp),
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        when {
-            uiState.isLoading && uiState.orders.isEmpty() -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(color = DobbyGoColors.Purple)
-                }
-            }
-            uiState.errorMessage != null && uiState.orders.isEmpty() -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Card(
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            OrdersHomeHeader(
+                firstName = firstName,
+                profilePhotoUrl = uiState.profilePhotoUrl,
+                connectionStatus = uiState.connectionStatus,
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = { viewModel.refresh() },
+            )
+            OrdersTabRow(
+                selectedTab = uiState.selectedTab,
+                onTabSelected = viewModel::setTab,
+            )
+
+            when {
+                uiState.isLoading && uiState.orders.isEmpty() -> {
+                    Box(
                         modifier = Modifier
-                            .widthIn(max = 400.dp)
-                            .padding(horizontal = 24.dp),
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                        CircularProgressIndicator(color = DobbyGoColors.Purple)
+                    }
+                }
+                uiState.errorMessage != null && uiState.orders.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Card(
+                            modifier = Modifier
+                                .widthIn(max = 400.dp)
+                                .padding(horizontal = 24.dp),
                         ) {
-                            Text(
-                                text = uiState.errorMessage!!,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error,
-                                textAlign = TextAlign.Center,
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { viewModel.loadOrders() }) {
-                                Text("Reintentar")
+                            Column(
+                                modifier = Modifier.padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Text(
+                                    text = uiState.errorMessage!!,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error,
+                                    textAlign = TextAlign.Center,
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(onClick = { viewModel.loadOrders() }) {
+                                    Text("Reintentar")
+                                }
                             }
                         }
                     }
                 }
-            }
-            else -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentPadding = PaddingValues(bottom = 8.dp),
-                ) {
-                    item {
-                        OrdersHomeHeader(
-                            firstName = firstName,
-                            profilePhotoUrl = uiState.profilePhotoUrl,
-                            connectionStatus = uiState.connectionStatus,
-                            isRefreshing = uiState.isRefreshing,
-                            onRefresh = { viewModel.refresh() },
-                        )
-                    }
-                    item {
-                        OrdersTabRow(
-                            selectedTab = uiState.selectedTab,
-                            onTabSelected = viewModel::setTab,
-                        )
-                    }
-                    item {
-                        OrdersSectionHeader(
-                            subtitle = tabSectionSubtitle(uiState.selectedTab, uiState.orders.size),
-                        )
-                    }
-                    if (uiState.selectedTab == OrdersTab.OPEN && uiState.hasActiveOrder) {
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentPadding = PaddingValues(bottom = 8.dp),
+                    ) {
                         item {
-                            ActiveOrderLockBanner(onGoToAssigned = { viewModel.setTab(OrdersTab.ASSIGNED) })
-                        }
-                    }
-                    if (uiState.orders.isEmpty()) {
-                        item {
-                            Text(
-                                text = emptyMessage(uiState.selectedTab),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = DobbyGoColors.TextSecondary,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 20.dp, vertical = 32.dp),
-                                textAlign = TextAlign.Center,
+                            OrdersSectionHeader(
+                                subtitle = tabSectionSubtitle(uiState.selectedTab, uiState.orders.size),
                             )
                         }
-                    } else {
-                        items(uiState.orders, key = { it.id }) { order ->
-                            val openLocked =
-                                uiState.selectedTab == OrdersTab.OPEN && uiState.hasActiveOrder
-                            DeliveryOrderCard(
-                                order = order,
-                                enabled = !openLocked,
-                                onClick = { onOrderClick(order.id) },
-                                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 2.dp, bottom = 4.dp),
-                            )
+                        if (uiState.selectedTab == OrdersTab.OPEN && uiState.hasActiveOrder) {
+                            item {
+                                ActiveOrderLockBanner(onGoToAssigned = { viewModel.setTab(OrdersTab.ASSIGNED) })
+                            }
+                        }
+                        if (uiState.orders.isEmpty() && !uiState.isLoading) {
+                            item {
+                                Text(
+                                    text = emptyMessage(uiState.selectedTab),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = DobbyGoColors.TextSecondary,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 20.dp, vertical = 32.dp),
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+                        }
+                        if (uiState.orders.isNotEmpty()) {
+                            items(uiState.orders, key = { it.id }) { order ->
+                                val openLocked =
+                                    uiState.selectedTab == OrdersTab.OPEN && uiState.hasActiveOrder
+                                DeliveryOrderCard(
+                                    order = order,
+                                    enabled = !openLocked,
+                                    onClick = { onOrderClick(order.id) },
+                                    modifier = Modifier.padding(
+                                        start = 20.dp,
+                                        end = 20.dp,
+                                        top = 2.dp,
+                                        bottom = 4.dp,
+                                    ),
+                                )
+                            }
                         }
                     }
                 }

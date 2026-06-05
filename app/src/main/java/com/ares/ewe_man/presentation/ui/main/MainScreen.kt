@@ -18,10 +18,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.ares.ewe_man.core.theme.DobbyGoColors
 import com.ares.ewe_man.presentation.ui.orders.OrdersScreen
 import com.ares.ewe_man.presentation.ui.profile.ProfileScreen
+import com.ares.ewe_man.presentation.viewmodel.orders.OrdersViewModel
 
 sealed class MainTab(
     val title: String,
@@ -47,9 +50,16 @@ fun MainScreen(
     onLogout: () -> Unit,
     onOrderClick: (orderId: String) -> Unit,
     refreshOrdersTrigger: Int = 0,
+    ordersViewModel: OrdersViewModel = hiltViewModel(),
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val tabs = listOf(MainTab.Orders, MainTab.Profile)
+
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == 0) {
+            ordersViewModel.refreshProfileHeader()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -66,8 +76,12 @@ fun MainScreen(
                     modifier = Modifier.fillMaxSize(),
                     onOrderClick = onOrderClick,
                     refreshTrigger = refreshOrdersTrigger,
+                    viewModel = ordersViewModel,
                 )
-                1 -> ProfileScreen(onLogout = onLogout)
+                1 -> ProfileScreen(
+                    onLogout = onLogout,
+                    onConnectionStatusChanged = { ordersViewModel.refreshProfileHeader() },
+                )
             }
         }
         DobbyGoBottomBar(

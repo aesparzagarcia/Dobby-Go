@@ -6,8 +6,11 @@ import com.ares.ewe_man.core.network.toUserFacingMessage
 import com.ares.ewe_man.data.remote.model.DeliveryProfileDto
 import com.ares.ewe_man.domain.repository.DeliveryProfileRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -26,6 +29,9 @@ class ProfileViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
+
+    private val _connectionStatusUpdated = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val connectionStatusUpdated: SharedFlow<Unit> = _connectionStatusUpdated.asSharedFlow()
 
     init {
         loadProfile()
@@ -64,6 +70,7 @@ class ProfileViewModel @Inject constructor(
             deliveryProfileRepository.setConnectionStatus(target).fold(
                 onSuccess = {
                     _uiState.value = _uiState.value.copy(statusUpdating = false)
+                    _connectionStatusUpdated.tryEmit(Unit)
                     loadProfile()
                 },
                 onFailure = { e ->

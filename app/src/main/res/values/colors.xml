@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
+    <color name="dobby_primary">#FF0061FF</color>
+    <color name="dobby_accent">#FF00C2A8</color>
+    <color name="dobby_light">#FFF0F4FF</color>
+    <color name="dobby_dark">#FF1D2B4F</color>
+    <color name="dobby_warning">#FFFFB800</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>
