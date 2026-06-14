@@ -5,6 +5,7 @@
     <color name="dobby_light">#FFF0F4FF</color>
     <color name="dobby_dark">#FF1D2B4F</color>
     <color name="dobby_warning">#FFFFB800</color>
+    <color name="dobby_notification_accent">#FF7C3AED</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

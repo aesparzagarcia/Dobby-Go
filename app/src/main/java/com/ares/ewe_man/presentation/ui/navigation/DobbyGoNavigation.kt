@@ -1,5 +1,6 @@
 package com.ares.ewe_man.presentation.ui.navigation
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -26,6 +27,7 @@ import com.ares.ewe_man.presentation.viewmodel.nav.OrdersRefreshViewModel
 import com.ares.ewe_man.presentation.viewmodel.orders.OrdersViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 import dagger.hilt.android.EntryPointAccessors
+import androidx.activity.ComponentActivity
 
 @Composable
 fun DobbyGoNavigation(
@@ -49,9 +51,12 @@ fun DobbyGoNavigation(
         }
     }
     val refreshVm = hiltViewModel<OrdersRefreshViewModel>()
+    val activity = LocalActivity.current as ComponentActivity
+    val ordersViewModel: OrdersViewModel = hiltViewModel(activity)
 
     LaunchedEffect(pendingOrderId) {
         val orderId = pendingOrderId ?: return@LaunchedEffect
+        refreshVm.triggerRefresh()
         snapshotFlow { navController.currentBackStackEntry?.destination?.route }
             .filter { route ->
                 route != null &&
@@ -63,7 +68,6 @@ fun DobbyGoNavigation(
         navController.navigate(DobbyGoScreens.orderDetail(orderId)) {
             launchSingleTop = true
         }
-        refreshVm.triggerRefresh()
         onPendingOrderNavigated()
     }
 
@@ -110,7 +114,6 @@ fun DobbyGoNavigation(
         }
         composable(DobbyGoScreens.Main) {
             val refreshTrigger by refreshVm.triggerCount.collectAsState(initial = 0)
-            val ordersViewModel: OrdersViewModel = hiltViewModel()
             MainScreen(
                 onLogout = {
                     navController.navigate(DobbyGoScreens.Phone) {

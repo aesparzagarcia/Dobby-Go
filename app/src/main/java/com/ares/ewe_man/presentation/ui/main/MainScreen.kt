@@ -36,6 +36,7 @@ import com.ares.ewe_man.core.theme.DobbyGoColors
 import com.ares.ewe_man.presentation.ui.orders.OrdersScreen
 import com.ares.ewe_man.presentation.ui.profile.ProfileScreen
 import com.ares.ewe_man.presentation.viewmodel.orders.OrdersViewModel
+import com.ares.ewe_man.presentation.viewmodel.profile.ProfileViewModel
 
 sealed class MainTab(
     val title: String,
@@ -51,13 +52,25 @@ fun MainScreen(
     onOrderClick: (orderId: String) -> Unit,
     refreshOrdersTrigger: Int = 0,
     ordersViewModel: OrdersViewModel = hiltViewModel(),
+    profileViewModel: ProfileViewModel = hiltViewModel(),
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val tabs = listOf(MainTab.Orders, MainTab.Profile)
 
     LaunchedEffect(selectedTab) {
-        if (selectedTab == 0) {
-            ordersViewModel.refreshProfileHeader()
+        when (selectedTab) {
+            0 -> {
+                ordersViewModel.refreshProfileHeader()
+                ordersViewModel.refresh()
+            }
+            1 -> profileViewModel.loadProfile()
+        }
+    }
+
+    LaunchedEffect(refreshOrdersTrigger) {
+        if (refreshOrdersTrigger > 0) {
+            ordersViewModel.refresh()
+            profileViewModel.loadProfile()
         }
     }
 
@@ -81,6 +94,7 @@ fun MainScreen(
                 1 -> ProfileScreen(
                     onLogout = onLogout,
                     onConnectionStatusChanged = { ordersViewModel.refreshProfileHeader() },
+                    viewModel = profileViewModel,
                 )
             }
         }

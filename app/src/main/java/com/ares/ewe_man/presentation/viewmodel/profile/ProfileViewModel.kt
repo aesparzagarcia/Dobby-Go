@@ -33,10 +33,6 @@ class ProfileViewModel @Inject constructor(
     private val _connectionStatusUpdated = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val connectionStatusUpdated: SharedFlow<Unit> = _connectionStatusUpdated.asSharedFlow()
 
-    init {
-        loadProfile()
-    }
-
     fun loadProfile() {
         viewModelScope.launch {
             val hadProfile = _uiState.value.profile != null

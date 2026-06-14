@@ -20,6 +20,7 @@ import androidx.core.view.WindowCompat
 import com.ares.ewe_man.core.theme.DobbyGoTheme
 import com.ares.ewe_man.presentation.ui.navigation.DobbyGoNavigation
 import com.ares.ewe_man.realtime.DeliveryOrderNotificationHelper
+import com.ares.ewe_man.realtime.DeliveryOrderRealtimeBus
 import com.ares.ewe_man.realtime.DeliveryRealtimeCoordinator
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -34,9 +35,14 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var deliveryRealtimeCoordinator: DeliveryRealtimeCoordinator
 
+    @Inject
+    lateinit var orderRealtimeBus: DeliveryOrderRealtimeBus
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private var pendingOrderId by mutableStateOf<String?>(null)
+
+    private var wasStopped = false
 
     private val notifPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -46,7 +52,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        consumeOrderIdFromIntent(intent)
+        consumeNotificationIntent(intent)
         enableEdgeToEdge()
         // Light app UI: dark status/nav bar icons even when the phone is in system dark mode
         WindowCompat.getInsetsController(window, window.decorView).apply {
@@ -69,17 +75,63 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        consumeOrderIdFromIntent(intent)
+        consumeNotificationIntent(intent)
     }
 
-    private fun consumeOrderIdFromIntent(intent: Intent?) {
+    override fun onStop() {
+        wasStopped = true
+        super.onStop()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (wasStopped) {
+            wasStopped = false
+            orderRealtimeBus.notifyOrdersChanged()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        DeliveryOrderNotificationHelper.clearAllOrderNotifications(this)
+    }
+
+    private fun consumeNotificationIntent(intent: Intent?) {
         if (intent == null) return
-        val id = intent.getStringExtra(DeliveryOrderNotificationHelper.EXTRA_ORDER_ID)
-            ?: intent.extras?.getString("order_id")
-        val trimmed = id?.trim()?.takeIf { it.isNotEmpty() } ?: return
-        pendingOrderId = trimmed
+        val extras = intent.extras
+
+        fun extra(vararg keys: String): String? {
+            for (key in keys) {
+                val raw = intent.getStringExtra(key) ?: extras?.getString(key)
+                val trimmed = raw?.trim()?.takeIf { it.isNotEmpty() }
+                if (trimmed != null) return trimmed
+            }
+            return null
+        }
+
+        val type = extra("type", "gcm.notification.type")
+        val orderId = extra(
+            DeliveryOrderNotificationHelper.EXTRA_ORDER_ID,
+            "order_id",
+            "gcm.notification.order_id",
+        )
+        val isDeliveryOrderPush = type == "delivery_order_available" || orderId != null
+
+        if (isDeliveryOrderPush) {
+            orderRealtimeBus.notifyOrdersChanged()
+            orderId?.let { DeliveryOrderNotificationHelper.clearOrderNotifications(this, it) }
+        }
+
+        if (orderId != null) {
+            pendingOrderId = orderId
+        }
+
         intent.removeExtra(DeliveryOrderNotificationHelper.EXTRA_ORDER_ID)
-        intent.extras?.remove("order_id")
+        intent.removeExtra("type")
+        extras?.remove("order_id")
+        extras?.remove("type")
+        extras?.remove("gcm.notification.order_id")
+        extras?.remove("gcm.notification.type")
     }
 
     private fun requestNotifPermissionIfNeeded() {
