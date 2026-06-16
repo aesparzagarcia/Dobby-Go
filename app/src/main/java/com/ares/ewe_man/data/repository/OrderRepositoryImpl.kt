@@ -3,8 +3,10 @@ package com.ares.ewe_man.data.repository
 import com.ares.ewe_man.data.remote.api.DobbyGoApi
 import com.ares.ewe_man.data.remote.model.DeliveryOrderDto
 import com.ares.ewe_man.data.remote.model.StartDeliveryRequest
-import com.ares.ewe_man.data.remote.model.VerifyPickupCodeRequest
+import com.ares.ewe_man.data.remote.model.MarkDeliveredRequest
+import com.ares.ewe_man.data.remote.model.VerifyDeliveryCodeRequest
 import com.ares.ewe_man.data.remote.model.UpdateDeliveryEtaRequest
+import com.ares.ewe_man.data.remote.model.VerifyPickupCodeRequest
 import com.ares.ewe_man.domain.repository.OrderRepository
 import javax.inject.Inject
 
@@ -44,7 +46,9 @@ class OrderRepositoryImpl @Inject constructor(
 
     override suspend fun verifyPickupCode(orderId: String, pickupCode: String): Result<Boolean> {
         return try {
-            val response = api.verifyPickupCode(orderId, VerifyPickupCodeRequest(pickupCode = pickupCode))
+            val response = api.verifyPickupCode(orderId,
+                VerifyPickupCodeRequest(pickupCode = pickupCode)
+            )
             Result.success(response.valid)
         } catch (e: Exception) {
             Result.failure(e)
@@ -60,6 +64,15 @@ class OrderRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun verifyDeliveryCode(orderId: String, deliveryCode: String): Result<Boolean> {
+        return try {
+            val response = api.verifyDeliveryCode(orderId, VerifyDeliveryCodeRequest(deliveryCode = deliveryCode))
+            Result.success(response.valid)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun markArrivedAtCustomer(orderId: String): Result<Unit> {
         return try {
             api.markArrivedAtCustomer(orderId)
@@ -69,9 +82,9 @@ class OrderRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun markDelivered(orderId: String): Result<Unit> {
+    override suspend fun markDelivered(orderId: String, deliveryCode: String): Result<Unit> {
         return try {
-            api.markDelivered(orderId)
+            api.markDelivered(orderId, MarkDeliveredRequest(deliveryCode = deliveryCode))
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

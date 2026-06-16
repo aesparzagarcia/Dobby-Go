@@ -11,7 +11,8 @@ import com.ares.ewe_man.data.remote.model.DeliveryRequestOtpRequest
 import com.ares.ewe_man.data.remote.model.DeliveryRequestOtpResponse
 import com.ares.ewe_man.data.remote.model.StartDeliveryRequest
 import com.ares.ewe_man.data.remote.model.StartDeliveryResponse
-import com.ares.ewe_man.data.remote.model.VerifyPickupCodeRequest
+import com.ares.ewe_man.data.remote.model.MarkDeliveredRequest
+import com.ares.ewe_man.data.remote.model.VerifyDeliveryCodeRequest
 import com.ares.ewe_man.data.remote.model.VerifyPickupCodeResponse
 import com.ares.ewe_man.data.remote.model.UpdateDeliveryEtaRequest
 import com.ares.ewe_man.data.remote.model.UpdateDeliveryEtaResponse
@@ -21,6 +22,7 @@ import com.ares.ewe_man.data.remote.model.VerifyOtpRequest
 import com.ares.ewe_man.data.remote.model.VerifyOtpResponse
 import com.ares.ewe_man.data.remote.model.FirebaseTokenResponse
 import com.ares.ewe_man.data.remote.model.RegisterPushDeviceRequest
+import com.ares.ewe_man.data.remote.model.VerifyPickupCodeRequest
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -76,8 +78,17 @@ interface DobbyGoApi {
     @PATCH("delivery/orders/{id}/arrived")
     suspend fun markArrivedAtCustomer(@Path("id") orderId: String): MarkArrivedResponse
 
+    @POST("delivery/orders/{id}/verify-delivery-code")
+    suspend fun verifyDeliveryCode(
+        @Path("id") orderId: String,
+        @Body body: VerifyDeliveryCodeRequest,
+    ): VerifyPickupCodeResponse
+
     @PATCH("delivery/orders/{id}/delivered")
-    suspend fun markDelivered(@Path("id") orderId: String): DeliveredOrderResponse
+    suspend fun markDelivered(
+        @Path("id") orderId: String,
+        @Body body: MarkDeliveredRequest,
+    ): DeliveredOrderResponse
 
     @PATCH("delivery/location")
     suspend fun updateLocation(@Body body: UpdateLocationRequest): UpdateLocationResponse

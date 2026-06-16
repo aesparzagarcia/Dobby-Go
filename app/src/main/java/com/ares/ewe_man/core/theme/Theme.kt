@@ -1,47 +1,36 @@
 package com.ares.ewe_man.core.theme
 
-import android.os.Build
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 
 private val LightColorScheme = lightColorScheme(
     primary = DobbyGoColors.Primary,
-    onPrimary = Color.White,
-    primaryContainer = DobbyGoColors.Light,
-    onPrimaryContainer = DobbyGoColors.Dark,
+    onPrimary = DobbyGoColors.OnPrimary,
+    primaryContainer = DobbyPureScale.Mist,
+    onPrimaryContainer = DobbyGoColors.TextPrimary,
     secondary = DobbyGoColors.Accent,
-    onSecondary = Color.White,
+    onSecondary = DobbyPureScale.Pure,
     tertiary = DobbyGoColors.Warning,
-    onTertiary = DobbyGoColors.Dark,
-    background = Color.White,
-    onBackground = DobbyGoColors.Dark,
-    surface = DobbyGoColors.Surface,
-    onSurface = DobbyGoColors.Dark,
-    surfaceVariant = DobbyGoColors.Light,
-    onSurfaceVariant = DobbyGoColors.Dark.copy(alpha = 0.72f),
-    outline = DobbyGoColors.Border,
+    onTertiary = DobbyGoColors.TextPrimary,
+    background = DobbyGoColors.ScreenBackground,
+    onBackground = DobbyGoColors.TextPrimary,
+    surface = DobbyGoColors.CardSurface,
+    onSurface = DobbyGoColors.TextPrimary,
+    surfaceVariant = DobbyPureScale.Fog,
+    onSurfaceVariant = DobbyGoColors.TextSecondary,
+    outline = DobbyGoColors.IconBorder,
+    outlineVariant = DobbyPureScale.Mist,
 )
 
 @Composable
 fun DobbyGoTheme(
-    dynamicColor: Boolean = false,
-    content: @Composable () -> Unit
+    @Suppress("UNUSED_PARAMETER") dynamicColor: Boolean = false,
+    content: @Composable () -> Unit,
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            dynamicLightColorScheme(context)
-        }
-        else -> LightColorScheme
-    }
-
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = LightColorScheme,
         typography = Typography,
-        content = content
+        content = content,
     )
 }

@@ -15,12 +15,14 @@ interface OrderRepository {
 
     suspend fun verifyPickupCode(orderId: String, pickupCode: String): Result<Boolean>
 
+    suspend fun verifyDeliveryCode(orderId: String, deliveryCode: String): Result<Boolean>
+
     suspend fun startDelivery(orderId: String, pickupCode: String): Result<Unit>
 
     /** Courier confirms arrival at the customer address (required before [markDelivered]). */
     suspend fun markArrivedAtCustomer(orderId: String): Result<Unit>
 
-    suspend fun markDelivered(orderId: String): Result<Unit>
+    suspend fun markDelivered(orderId: String, deliveryCode: String): Result<Unit>
 
     /** Report current location to backend so the customer can see it on the tracking map. */
     suspend fun updateLocation(lat: Double, lng: Double): Result<Unit>

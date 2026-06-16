@@ -52,6 +52,9 @@ data class DeliveryMapUiState(
     /** True when backend already has arrival or we just succeeded marking it. */
     val hasMarkedArrived: Boolean = false,
     val isMarkingArrived: Boolean = false,
+    val deliveryCodeInput: String = "",
+    val deliveryCodeValid: Boolean? = null,
+    val isVerifyingDeliveryCode: Boolean = false,
     val isMarkingDelivered: Boolean = false,
     val isDelivered: Boolean = false,
     val errorMessage: String? = null,
@@ -78,6 +81,7 @@ class DeliveryMapViewModel @Inject constructor(
     private var previousLatLng: LatLng? = null
     private var smoothedHeading: Float = 0f
     private var lastPostedEtaMinutes: Int? = null
+    private var verifyDeliveryCodeJob: Job? = null
 
     init {
         loadData()
@@ -86,6 +90,7 @@ class DeliveryMapViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         locationPollJob?.cancel()
+        verifyDeliveryCodeJob?.cancel()
     }
 
     fun loadData() {
@@ -262,7 +267,9 @@ class DeliveryMapViewModel @Inject constructor(
                 .onSuccess {
                     _uiState.value = _uiState.value.copy(
                         isMarkingArrived = false,
-                        hasMarkedArrived = true
+                        hasMarkedArrived = true,
+                        deliveryCodeInput = "",
+                        deliveryCodeValid = null,
                     )
                 }
                 .onFailure { e ->
@@ -274,11 +281,45 @@ class DeliveryMapViewModel @Inject constructor(
         }
     }
 
+    fun onDeliveryCodeChange(raw: String) {
+        val digits = raw.filter { it.isDigit() }.take(6)
+        _uiState.value = _uiState.value.copy(
+            deliveryCodeInput = digits,
+            deliveryCodeValid = if (digits.length == 6) null else false,
+        )
+        verifyDeliveryCodeJob?.cancel()
+        if (digits.length != 6 || orderId.isBlank()) return
+        verifyDeliveryCodeJob = viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isVerifyingDeliveryCode = true)
+            orderRepository.verifyDeliveryCode(orderId, digits)
+                .onSuccess { valid ->
+                    _uiState.value = _uiState.value.copy(
+                        isVerifyingDeliveryCode = false,
+                        deliveryCodeValid = valid,
+                    )
+                }
+                .onFailure {
+                    _uiState.value = _uiState.value.copy(
+                        isVerifyingDeliveryCode = false,
+                        deliveryCodeValid = false,
+                    )
+                }
+        }
+    }
+
     fun markDelivered(onSuccess: () -> Unit) {
-        if (orderId.isBlank()) return
+        val state = _uiState.value
+        val code = state.deliveryCodeInput
+        if (orderId.isBlank() ||
+            !state.hasMarkedArrived ||
+            code.length != 6 ||
+            state.deliveryCodeValid != true
+        ) {
+            return
+        }
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isMarkingDelivered = true, errorMessage = null)
-            orderRepository.markDelivered(orderId)
+            orderRepository.markDelivered(orderId, code)
                 .onSuccess {
                     _uiState.value = _uiState.value.copy(
                         isMarkingDelivered = false,

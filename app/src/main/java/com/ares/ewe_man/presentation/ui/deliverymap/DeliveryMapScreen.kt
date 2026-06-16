@@ -39,7 +39,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -59,6 +62,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -328,7 +332,11 @@ fun DeliveryMapScreen(
                         hasMarkedArrived = uiState.hasMarkedArrived,
                         isNearDestination = uiState.isNearDestination,
                         isMarkingArrived = uiState.isMarkingArrived,
+                        deliveryCodeInput = uiState.deliveryCodeInput,
+                        deliveryCodeValid = uiState.deliveryCodeValid,
+                        isVerifyingDeliveryCode = uiState.isVerifyingDeliveryCode,
                         isMarkingDelivered = uiState.isMarkingDelivered,
+                        onDeliveryCodeChange = { viewModel.onDeliveryCodeChange(it) },
                         onMarkArrived = { viewModel.markArrived() },
                         onMarkDelivered = { viewModel.markDelivered(onSuccess = onBack) },
                     )
@@ -478,7 +486,11 @@ private fun DeliveryBottomPanel(
     hasMarkedArrived: Boolean,
     isNearDestination: Boolean,
     isMarkingArrived: Boolean,
+    deliveryCodeInput: String,
+    deliveryCodeValid: Boolean?,
+    isVerifyingDeliveryCode: Boolean,
     isMarkingDelivered: Boolean,
+    onDeliveryCodeChange: (String) -> Unit,
     onMarkArrived: () -> Unit,
     onMarkDelivered: () -> Unit,
     modifier: Modifier = Modifier,
@@ -647,9 +659,50 @@ private fun DeliveryBottomPanel(
                     )
                 }
             } else {
+                OutlinedTextField(
+                    value = deliveryCodeInput,
+                    onValueChange = onDeliveryCodeChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Código del cliente") },
+                    placeholder = { Text("6 dígitos") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = DobbyGoColors.Purple,
+                        focusedLabelColor = DobbyGoColors.Purple,
+                        cursorColor = DobbyGoColors.Purple,
+                    ),
+                )
+                Text(
+                    text = "Pide el código al cliente en la app Dobby.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = DobbyGoColors.TextSecondary,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+                when {
+                    deliveryCodeInput.length == 6 && isVerifyingDeliveryCode -> {
+                        Text(
+                            text = "Verificando código…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = DobbyGoColors.TextSecondary,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
+                    deliveryCodeInput.length == 6 && deliveryCodeValid == false -> {
+                        Text(
+                            text = "Código incorrecto. Verifica con el cliente.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                val canConfirmDelivery = deliveryCodeValid == true && !isVerifyingDeliveryCode
                 Button(
                     onClick = onMarkDelivered,
-                    enabled = !isMarkingDelivered,
+                    enabled = canConfirmDelivery && !isMarkingDelivered,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),

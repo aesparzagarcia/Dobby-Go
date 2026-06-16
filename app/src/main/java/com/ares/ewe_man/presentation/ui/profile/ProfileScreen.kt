@@ -305,7 +305,7 @@ private fun ProfileUserHeaderRow(
         ProfileAvatarWithStatus(
             name = profile.name,
             photoUrl = profile.profilePhotoUrl,
-            showOnlineDot = isOnline || isOnDelivery,
+            isOnline = isOnline || isOnDelivery,
         )
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -317,8 +317,6 @@ private fun ProfileUserHeaderRow(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(modifier = Modifier.height(6.dp))
-            ConnectionStatusBadge(status = status)
         }
         Spacer(modifier = Modifier.width(8.dp))
         Column(horizontalAlignment = Alignment.End) {
@@ -365,8 +363,10 @@ private fun ProfileUserHeaderRow(
 private fun ProfileAvatarWithStatus(
     name: String,
     photoUrl: String?,
-    showOnlineDot: Boolean,
+    isOnline: Boolean,
 ) {
+    val statusDotColor = if (isOnline) DobbyGoColors.Green else DobbyGoColors.TextSecondary
+
     Box {
         val resolvedUrl = resolveProfileImageUrl(photoUrl)
         if (resolvedUrl != null) {
@@ -394,73 +394,17 @@ private fun ProfileAvatarWithStatus(
                 )
             }
         }
-        if (showOnlineDot) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset(x = 2.dp, y = 2.dp)
-                    .size(14.dp)
-                    .clip(CircleShape)
-                    .background(DobbyGoColors.Green)
-                    .border(2.dp, DobbyGoColors.Surface, CircleShape),
-            )
-        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset(x = 2.dp, y = 2.dp)
+                .size(14.dp)
+                .clip(CircleShape)
+                .background(statusDotColor)
+                .border(2.dp, DobbyGoColors.Surface, CircleShape),
+        )
     }
 }
-
-@Composable
-private fun ConnectionStatusBadge(status: String) {
-    val (label, bg, dotColor, textColor) = when (status.uppercase()) {
-        "ONLINE" -> StatusBadgeStyle(
-            label = "Conectado",
-            bg = DobbyGoColors.GreenLight,
-            dotColor = DobbyGoColors.Green,
-            textColor = DobbyGoColors.Green,
-        )
-        "ON_DELIVERY" -> StatusBadgeStyle(
-            label = "En reparto",
-            bg = DobbyGoColors.BlueLight,
-            dotColor = DobbyGoColors.Blue,
-            textColor = DobbyGoColors.Blue,
-        )
-        else -> StatusBadgeStyle(
-            label = "Desconectado",
-            bg = DobbyGoColors.Background,
-            dotColor = DobbyGoColors.TextSecondary,
-            textColor = DobbyGoColors.TextSecondary,
-        )
-    }
-    Surface(
-        shape = RoundedCornerShape(50),
-        color = bg,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(dotColor),
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = textColor,
-            )
-        }
-    }
-}
-
-private data class StatusBadgeStyle(
-    val label: String,
-    val bg: Color,
-    val dotColor: Color,
-    val textColor: Color,
-)
 
 @Composable
 private fun ProfileLevelSection(profile: DeliveryProfileDto) {
