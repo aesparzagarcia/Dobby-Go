@@ -46,9 +46,8 @@ class OrdersViewModel @Inject constructor(
     val uiState: StateFlow<OrdersUiState> = _uiState.asStateFlow()
 
     init {
-        loadDeliveryManName()
-        loadOrders()
-        refreshActiveOrderLock()
+        // Do not fetch here: this ViewModel is tied to Main; loading in init ran before login
+        // when scoped to the Activity and showed a false "Sesión o permisos" error on home.
         viewModelScope.launch {
             orderRealtimeBus.refreshOrders.collect {
                 refresh()
@@ -71,10 +70,6 @@ class OrdersViewModel @Inject constructor(
                 activeOrderId = active.firstOrNull()?.id,
             )
         }
-    }
-
-    private fun loadDeliveryManName() {
-        viewModelScope.launch { refreshProfileHeaderSync() }
     }
 
     private suspend fun refreshProfileHeaderSync() {
@@ -111,14 +106,15 @@ class OrdersViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(
                         orders = list,
                         isLoading = false,
-                        isRefreshing = false
+                        isRefreshing = false,
+                        errorMessage = null,
                     )
                 }
                 .onFailure { e ->
                     _uiState.value = _uiState.value.copy(
                         errorMessage = e.toUserFacingMessage(),
                         isLoading = false,
-                        isRefreshing = false
+                        isRefreshing = false,
                     )
                 }
         }
@@ -139,15 +135,26 @@ class OrdersViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isRefreshing = true)
+            val showFullLoader = _uiState.value.orders.isEmpty()
+            _uiState.value = _uiState.value.copy(
+                isLoading = showFullLoader,
+                isRefreshing = !showFullLoader,
+                errorMessage = null,
+            )
             refreshProfileHeaderSync()
             refreshActiveOrderLockSync()
             loadOrdersForTab(_uiState.value.selectedTab)
                 .onSuccess { list ->
-                    _uiState.value = _uiState.value.copy(orders = list, isRefreshing = false)
+                    _uiState.value = _uiState.value.copy(
+                        orders = list,
+                        isLoading = false,
+                        isRefreshing = false,
+                        errorMessage = null,
+                    )
                 }
                 .onFailure { e ->
                     _uiState.value = _uiState.value.copy(
+                        isLoading = false,
                         isRefreshing = false,
                         errorMessage = e.toUserFacingMessage(),
                     )

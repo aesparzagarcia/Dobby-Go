@@ -25,10 +25,8 @@ import com.ares.ewe_man.presentation.ui.orderdetail.OrderDetailScreen
 import com.ares.ewe_man.presentation.ui.pickupmap.PickupMapScreen
 import com.ares.ewe_man.presentation.ui.splash.SplashScreen
 import com.ares.ewe_man.presentation.viewmodel.nav.OrdersRefreshViewModel
-import com.ares.ewe_man.presentation.viewmodel.orders.OrdersViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 import dagger.hilt.android.EntryPointAccessors
-import androidx.activity.ComponentActivity
 
 @Composable
 fun DobbyGoNavigation(
@@ -52,8 +50,6 @@ fun DobbyGoNavigation(
         }
     }
     val refreshVm = hiltViewModel<OrdersRefreshViewModel>()
-    val activity = LocalActivity.current as ComponentActivity
-    val ordersViewModel: OrdersViewModel = hiltViewModel(activity)
 
     LaunchedEffect(pendingOrderId) {
         val orderId = pendingOrderId ?: return@LaunchedEffect
@@ -95,7 +91,7 @@ fun DobbyGoNavigation(
             PhoneScreen(
                 onCodeSent = { phone ->
                     navController.navigate(DobbyGoScreens.otp(phone)) {
-                        popUpTo(DobbyGoScreens.Phone) { inclusive = true }
+                        popUpTo(DobbyGoScreens.Phone) { inclusive = false }
                     }
                 }
             )
@@ -103,8 +99,9 @@ fun DobbyGoNavigation(
         composable(
             route = DobbyGoScreens.Otp,
             arguments = listOf(navArgument("phone") { type = NavType.StringType })
-        ) { backStackEntry ->
+        ) {
             OtpScreen(
+                onBack = { navController.popBackStack() },
                 onVerified = {
                     navController.navigate(DobbyGoScreens.Main) {
                         popUpTo(navController.graph.id) { inclusive = true }
@@ -129,7 +126,6 @@ fun DobbyGoNavigation(
                     navController.navigate(DobbyGoScreens.orderDetail(orderId))
                 },
                 refreshOrdersTrigger = refreshTrigger,
-                ordersViewModel = ordersViewModel,
             )
         }
         composable(

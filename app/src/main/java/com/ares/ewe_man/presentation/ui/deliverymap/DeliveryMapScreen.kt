@@ -675,7 +675,7 @@ private fun DeliveryBottomPanel(
                     ),
                 )
                 Text(
-                    text = "Pide el código al cliente en la app Dobby.",
+                    text = "Pide el código al cliente en la app Dobbi.",
                     style = MaterialTheme.typography.bodySmall,
                     color = DobbyGoColors.TextSecondary,
                     modifier = Modifier.padding(top = 6.dp),

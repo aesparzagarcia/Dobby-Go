@@ -39,6 +39,6 @@ fun levelDisplayName(levelKey: String): String = when (levelKey) {
     "RAPIDO" -> "Rápido"
     "PRO" -> "Pro"
     "ELITE" -> "Elite"
-    "MASTER_DOB" -> "Master Dobby"
+    "MASTER_DOB" -> "Master Dobbi"
     else -> levelKey
 }

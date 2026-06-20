@@ -1,6 +1,6 @@
 package com.ares.ewe_man.presentation.ui.auth.otp
 
-import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -77,11 +77,13 @@ private fun formatMmSs(totalSeconds: Int): String {
 @Composable
 fun OtpScreen(
     onVerified: () -> Unit,
+    onBack: () -> Unit,
     viewModel: OtpViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     val focusRequesters = remember { List(6) { FocusRequester() } }
+
+    BackHandler(onBack = onBack)
 
     LaunchedEffect(Unit) {
         focusRequesters[0].requestFocus()
@@ -107,7 +109,7 @@ fun OtpScreen(
                 .padding(horizontal = 24.dp),
         ) {
             IconButton(
-                onClick = { backDispatcher?.onBackPressed() },
+                onClick = onBack,
                 modifier = Modifier
                     .padding(top = 8.dp)
                     .size(40.dp)
@@ -125,7 +127,7 @@ fun OtpScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                text = "Introduce el código que enviamos 👀",
+                text = "Introduce el código que enviamos",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
                     color = Color.Black,

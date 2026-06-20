@@ -1,6 +1,7 @@
 package com.ares.ewe_man.data.repository
 
 import com.ares.ewe_man.core.network.toUserFacingMessage
+import com.ares.ewe_man.core.util.MxPhoneFormat
 import com.ares.ewe_man.data.local.datastore.SessionManager
 import com.ares.ewe_man.data.session.SessionEventBus
 import com.ares.ewe_man.data.remote.DeliveryLaunchRefreshOutcome
@@ -29,11 +30,9 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun requestOtp(phone: String): AuthResult<Unit> {
         return try {
-            val normalized = phone.trim()
-            if (normalized.isBlank()) {
-                return AuthResult.Error("Ingresa tu número de teléfono")
-            }
-            api.requestOtp(DeliveryRequestOtpRequest(phone = normalized))
+            val e164 = MxPhoneFormat.toE164(phone.trim())
+                ?: return AuthResult.Error("Ingresa un número de 10 dígitos")
+            api.requestOtp(DeliveryRequestOtpRequest(phone = e164))
             AuthResult.Success(Unit)
         } catch (e: HttpException) {
             val message = parseErrorBody(e) ?: "Error al enviar el código"
@@ -45,9 +44,10 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun verifyOtp(phone: String, code: String): AuthResult<Unit> {
         return try {
-            val phoneNorm = phone.trim()
+            val phoneNorm = MxPhoneFormat.toE164(phone.trim())
+                ?: return AuthResult.Error("Teléfono y código son requeridos")
             val codeStr = code.trim()
-            if (phoneNorm.isBlank() || codeStr.isBlank()) {
+            if (codeStr.isBlank()) {
                 return AuthResult.Error("Teléfono y código son requeridos")
             }
             val response = api.verifyOtp(VerifyOtpRequest(phone = phoneNorm, code = codeStr))
