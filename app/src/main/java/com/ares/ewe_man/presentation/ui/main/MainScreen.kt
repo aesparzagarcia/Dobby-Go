@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.ares.ewe_man.core.theme.DobbyGoColors
 import com.ares.ewe_man.presentation.ui.orders.OrdersScreen
 import com.ares.ewe_man.presentation.ui.profile.ProfileScreen
+import com.ares.ewe_man.presentation.viewmodel.main.MainViewModel
 import com.ares.ewe_man.presentation.viewmodel.orders.OrdersViewModel
 import com.ares.ewe_man.presentation.viewmodel.profile.ProfileViewModel
 
@@ -53,6 +54,7 @@ fun MainScreen(
     refreshOrdersTrigger: Int = 0,
     ordersViewModel: OrdersViewModel = hiltViewModel(),
     profileViewModel: ProfileViewModel = hiltViewModel(),
+    mainViewModel: MainViewModel = hiltViewModel(),
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val tabs = listOf(MainTab.Orders, MainTab.Profile)
@@ -92,7 +94,7 @@ fun MainScreen(
                     viewModel = ordersViewModel,
                 )
                 1 -> ProfileScreen(
-                    onLogout = onLogout,
+                    onLogout = { mainViewModel.logout(onLogout) },
                     onConnectionStatusChanged = { ordersViewModel.refreshProfileHeader() },
                     viewModel = profileViewModel,
                 )

@@ -1,5 +1,6 @@
 package com.ares.ewe_man.presentation.ui.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -84,7 +85,8 @@ fun DobbyGoNavigation(
                 },
                 onOpenHome = {
                     navController.navigate(DobbyGoScreens.Main) {
-                        popUpTo(DobbyGoScreens.Splash) { inclusive = true }
+                        popUpTo(navController.graph.id) { inclusive = true }
+                        launchSingleTop = true
                     }
                 }
             )
@@ -102,17 +104,20 @@ fun DobbyGoNavigation(
             route = DobbyGoScreens.Otp,
             arguments = listOf(navArgument("phone") { type = NavType.StringType })
         ) { backStackEntry ->
-            val phone = backStackEntry.arguments?.getString("phone") ?: ""
             OtpScreen(
-                phone = phone,
                 onVerified = {
                     navController.navigate(DobbyGoScreens.Main) {
-                        popUpTo(DobbyGoScreens.Otp) { inclusive = true }
+                        popUpTo(navController.graph.id) { inclusive = true }
+                        launchSingleTop = true
                     }
                 }
             )
         }
         composable(DobbyGoScreens.Main) {
+            val activity = LocalActivity.current
+            BackHandler {
+                activity?.finish()
+            }
             val refreshTrigger by refreshVm.triggerCount.collectAsState(initial = 0)
             MainScreen(
                 onLogout = {

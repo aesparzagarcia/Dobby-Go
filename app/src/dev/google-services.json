@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "356139319793",
+    "project_id": "ewe-app-ba5b7",
+    "storage_bucket": "ewe-app-ba5b7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:356139319793:android:0a62ac0fe1781ba9520450",
+        "android_client_info": {
+          "package_name": "com.ares.ewe_man.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAaTXsuRzzNw0i5fmFefLLjJ0oXjxY6rPQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -8,45 +8,53 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+private const val MX_NATIONAL_LENGTH = 10
+
 data class PhoneUiState(
-    val phone: String = "",
+    /** National digits only (no country code), 10 digits for Mexico. */
+    val nationalDigits: String = "",
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
 )
 
 @HiltViewModel
 class PhoneViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PhoneUiState())
     val uiState: StateFlow<PhoneUiState> = _uiState.asStateFlow()
 
-    fun onPhoneChange(value: String) {
-        _uiState.value = _uiState.value.copy(phone = value, errorMessage = null)
+    fun onPhoneChange(raw: String) {
+        val digits = raw.filter { it.isDigit() }.take(MX_NATIONAL_LENGTH)
+        _uiState.update { it.copy(nationalDigits = digits, errorMessage = null) }
     }
 
     fun sendCode(onSuccess: (String) -> Unit) {
         viewModelScope.launch {
-            val phone = _uiState.value.phone.trim()
-            if (phone.isBlank()) {
-                _uiState.value = _uiState.value.copy(errorMessage = "Ingresa tu número de teléfono")
+            val phone = _uiState.value.nationalDigits
+            if (phone.length < MX_NATIONAL_LENGTH) {
+                _uiState.update {
+                    it.copy(errorMessage = "Ingresa un número de 10 dígitos")
+                }
                 return@launch
             }
-            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             when (val result = authRepository.requestOtp(phone)) {
-                is AuthResult.Success -> onSuccess(phone)
+                is AuthResult.Success -> {
+                    _uiState.update { it.copy(isLoading = false, errorMessage = null) }
+                    onSuccess(phone)
+                }
                 is AuthResult.Error -> {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        errorMessage = result.message
-                    )
+                    _uiState.update {
+                        it.copy(isLoading = false, errorMessage = result.message)
+                    }
                 }
             }
-            _uiState.value = _uiState.value.copy(isLoading = false)
         }
     }
 }
