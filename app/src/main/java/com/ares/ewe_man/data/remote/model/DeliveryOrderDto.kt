@@ -6,6 +6,7 @@ data class DeliveryOrderDto(
     @SerializedName("id") val id: String,
     @SerializedName("status") val status: String,
     @SerializedName("total") val total: Double,
+    @SerializedName("serviceFee") val serviceFee: Double = 0.0,
     @SerializedName("deliveryFee") val deliveryFee: Double = 0.0,
     @SerializedName("deliveryAddress") val deliveryAddress: String?,
     @SerializedName("lat") val lat: Double?,

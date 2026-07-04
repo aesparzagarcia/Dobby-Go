@@ -411,6 +411,26 @@ private fun OrderDetailCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
+                    text = "Tarifa de servicio",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = DobbyGoColors.TextSecondary,
+                )
+                Text(
+                    text = "$${String.format(Locale.getDefault(), "%.2f", order.serviceFee)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = DobbyGoColors.TextPrimary,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
                     text = "Envío",
                     style = MaterialTheme.typography.bodyMedium,
                     color = DobbyGoColors.TextSecondary,

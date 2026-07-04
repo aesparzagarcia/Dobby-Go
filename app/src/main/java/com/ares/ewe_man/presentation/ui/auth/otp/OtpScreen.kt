@@ -29,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -89,9 +90,10 @@ fun OtpScreen(
         focusRequesters[0].requestFocus()
     }
 
-    LaunchedEffect(uiState.code, uiState.isLoading, uiState.errorMessage) {
+    LaunchedEffect(uiState.code, uiState.isLoading, uiState.isResending, uiState.errorMessage) {
         if (uiState.code.length != 6) return@LaunchedEffect
         if (uiState.isLoading) return@LaunchedEffect
+        if (uiState.isResending) return@LaunchedEffect
         if (uiState.errorMessage != null) return@LaunchedEffect
         viewModel.verifyCode(onVerified = onVerified)
     }
@@ -207,21 +209,44 @@ fun OtpScreen(
                 .padding(top = 8.dp, bottom = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(
-                text = "Podrás solicitar un nuevo código en",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = TimerLabelGray,
-                    fontWeight = FontWeight.Normal,
-                ),
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = formatMmSs(uiState.remainingSeconds),
-                style = MaterialTheme.typography.titleMedium.copy(
-                    color = TimerValueGray,
-                    fontWeight = FontWeight.Bold,
-                ),
-            )
+            if (uiState.canResend) {
+                TextButton(
+                    onClick = { viewModel.resendCode() },
+                    enabled = !uiState.isResending,
+                ) {
+                    if (uiState.isResending) {
+                        CircularProgressIndicator(
+                            color = PhoneTeal,
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Text(
+                            text = "Reenviar código",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                color = PhoneTeal,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    text = "Podrás solicitar un nuevo código en",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = TimerLabelGray,
+                        fontWeight = FontWeight.Normal,
+                    ),
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = formatMmSs(uiState.remainingSeconds),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        color = TimerValueGray,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                )
+            }
         }
     }
 }

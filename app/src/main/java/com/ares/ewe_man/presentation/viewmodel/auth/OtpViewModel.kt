@@ -24,9 +24,11 @@ data class OtpUiState(
     val digitSlots: List<String> = List(OTP_LENGTH) { "" },
     val remainingSeconds: Int = RESEND_COUNTDOWN_SECONDS,
     val isLoading: Boolean = false,
+    val isResending: Boolean = false,
     val errorMessage: String? = null,
 ) {
     val code: String get() = digitSlots.joinToString("")
+    val canResend: Boolean get() = remainingSeconds <= 0 && !isResending && !isLoading
 }
 
 @HiltViewModel
@@ -123,6 +125,30 @@ class OtpViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(isLoading = false, errorMessage = result.message)
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    fun resendCode() {
+        viewModelScope.launch {
+            if (!_uiState.value.canResend) return@launch
+            _uiState.update { it.copy(isResending = true, errorMessage = null) }
+            when (val result = authRepository.requestOtp(phone)) {
+                is AuthResult.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            isResending = false,
+                            remainingSeconds = RESEND_COUNTDOWN_SECONDS,
+                            digitSlots = List(OTP_LENGTH) { "" },
+                            errorMessage = null,
+                        )
+                    }
+                }
+                is AuthResult.Error -> {
+                    _uiState.update {
+                        it.copy(isResending = false, errorMessage = result.message)
                     }
                 }
             }
