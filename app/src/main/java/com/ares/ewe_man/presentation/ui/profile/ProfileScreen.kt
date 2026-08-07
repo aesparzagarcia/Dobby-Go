@@ -219,6 +219,7 @@ fun ProfileScreen(
                                 color = DobbyGoColors.Purple,
                             )
                         }
+                        ProfileBuildFooter()
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 }

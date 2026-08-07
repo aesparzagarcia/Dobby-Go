@@ -8,6 +8,7 @@ plugins {
     id("kotlin-kapt")
     id("kotlinx-serialization")
     id("com.google.gms.google-services")
+    alias(libs.plugins.firebase.crashlytics)
 }
 
 // Load local.properties so MAPS_API_KEY is available (Gradle does not load it by default)
@@ -19,6 +20,13 @@ if (localPropertiesFile.exists()) {
 val mapsApiKey: String = localProperties.getProperty("MAPS_API_KEY")
     ?: (project.findProperty("MAPS_API_KEY") as String?)
     ?: ""
+
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        load(keystorePropertiesFile.inputStream())
+    }
+}
 
 android {
     namespace = "com.ares.ewe_man"
@@ -65,6 +73,17 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -72,6 +91,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {
@@ -155,4 +177,5 @@ dependencies {
     implementation(libs.firebase.messaging)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+    implementation(libs.firebase.crashlytics)
 }

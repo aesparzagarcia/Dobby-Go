@@ -16,6 +16,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.ares.ewe_man.core.crash.TrackNavDestination
 import com.ares.ewe_man.di.SessionEventBusEntryPoint
 import com.ares.ewe_man.presentation.ui.auth.otp.OtpScreen
 import com.ares.ewe_man.presentation.ui.auth.phone.PhoneScreen
@@ -34,6 +35,7 @@ fun DobbyGoNavigation(
     onPendingOrderNavigated: () -> Unit = {},
 ) {
     val navController = rememberNavController()
+    TrackNavDestination(navController)
     val context = LocalContext.current
     val sessionEventBus = remember(context) {
         EntryPointAccessors.fromApplication(
