@@ -567,7 +567,7 @@ private fun DeliveryOrderCard(
                                 modifier = Modifier.size(14.dp),
                             )
                             Text(
-                                text = formatOrderDate(order.createdAt),
+                                text = formatOrderDate(order.displayAt()),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = DobbyGoColors.PurpleDark,
                             )

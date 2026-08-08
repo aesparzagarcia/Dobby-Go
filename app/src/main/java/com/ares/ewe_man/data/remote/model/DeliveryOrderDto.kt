@@ -12,6 +12,7 @@ data class DeliveryOrderDto(
     @SerializedName("lat") val lat: Double?,
     @SerializedName("lng") val lng: Double?,
     @SerializedName("arrivedAtCustomerAt") val arrivedAtCustomerAt: String? = null,
+    @SerializedName("deliveredAt") val deliveredAt: String? = null,
     @SerializedName("createdAt") val createdAt: String,
     @SerializedName("shopName") val shopName: String?,
     @SerializedName("shopAddress") val shopAddress: String? = null,
@@ -20,7 +21,17 @@ data class DeliveryOrderDto(
     @SerializedName("customerName") val customerName: String?,
     @SerializedName("customerLastName") val customerLastName: String? = null,
     @SerializedName("items") val items: List<DeliveryOrderItemDto>
-)
+) {
+    /** Hora a mostrar: entrega si ya está entregado; si no, creación del pedido. */
+    fun displayAt(): String {
+        val delivered = deliveredAt?.trim().orEmpty()
+        return if (status.equals("DELIVERED", ignoreCase = true) && delivered.isNotEmpty()) {
+            delivered
+        } else {
+            createdAt
+        }
+    }
+}
 
 data class DeliveryOrderItemDto(
     @SerializedName("productId") val productId: String,
