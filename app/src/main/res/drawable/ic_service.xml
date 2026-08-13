@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Marker for SERVICE_PAYMENT: document/receipt instead of shop. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Soft circular backdrop so it reads clearly on the map -->
+    <path
+        android:fillColor="#5C4B8A"
+        android:pathData="M24,4c-9.94,0 -18,8.06 -18,18c0,12.5 18,22 18,22s18,-9.5 18,-22C42,12.06 33.94,4 24,4z" />
+    <!-- Document body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M16,12h12.5L34,17.5V36c0,1.1 -0.9,2 -2,2H16c-1.1,0 -2,-0.9 -2,-2V14c0,-1.1 0.9,-2 2,-2z" />
+    <!-- Folded corner -->
+    <path
+        android:fillColor="#E8E4F0"
+        android:pathData="M28.5,12v5.5H34z" />
+    <!-- Text lines -->
+    <path
+        android:fillColor="#5C4B8A"
+        android:pathData="M18,22h12v1.8H18zM18,26.5h12v1.8H18zM18,31h8v1.8H18z" />
+</vector>
