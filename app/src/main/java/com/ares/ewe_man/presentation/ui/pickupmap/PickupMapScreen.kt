@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -64,14 +65,15 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ares.ewe_man.R
-import kotlin.math.roundToInt
 import com.ares.ewe_man.core.theme.DobbyGoColors
+import com.ares.ewe_man.data.remote.model.DeliveryOrderItemDto
 import com.ares.ewe_man.presentation.ui.map.ObserveMapGesturesDisableFollow
 import com.ares.ewe_man.presentation.ui.map.animateToRider
 import com.ares.ewe_man.presentation.viewmodel.pickupmap.PickupMapViewModel
@@ -86,8 +88,9 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
-import kotlinx.coroutines.launch
 import java.util.Locale
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 private const val DRIVER_ICON_ROTATION_OFFSET_DEG = 0f
 private const val MARKER_ICON_SIZE_DP = 48
@@ -185,11 +188,15 @@ fun PickupMapScreen(
     val current = uiState.currentLocation
     val riderMarkerState = remember { MarkerState(LatLng(0.0, 0.0)) }
     var shopIcon by remember { mutableStateOf<BitmapDescriptor?>(null) }
+    var serviceIcon by remember { mutableStateOf<BitmapDescriptor?>(null) }
     var deliveryIcon by remember { mutableStateOf<BitmapDescriptor?>(null) }
 
     LaunchedEffect(Unit) {
         if (shopIcon == null) {
             shopIcon = bitmapDescriptorFromRes(context, R.drawable.ic_shop)
+        }
+        if (serviceIcon == null) {
+            serviceIcon = bitmapDescriptorFromRes(context, R.drawable.ic_service)
         }
         if (deliveryIcon == null) {
             deliveryIcon = bitmapDescriptorFromRes(context, R.drawable.ic_delivery)
@@ -217,11 +224,20 @@ fun PickupMapScreen(
         },
         topBar = {
             PickupMapTopBar(
+                title = if (uiState.isServicePayment) {
+                    "Ruta a pagar el servicio"
+                } else {
+                    "Ruta al restaurante"
+                },
                 onBack = onBack,
                 onHelp = {
                     scope.launch {
                         snackbarHostState.showSnackbar(
-                            "Sigue la ruta hasta el restaurante. Cuando estés cerca, podrás comenzar el envío.",
+                            if (uiState.isServicePayment) {
+                                "Sigue la ruta al punto de pago. Revisa los servicios abajo y, cuando estés cerca, continúa al cliente."
+                            } else {
+                                "Sigue la ruta hasta el restaurante. Cuando estés cerca, podrás comenzar el envío."
+                            },
                         )
                     }
                 },
@@ -274,11 +290,17 @@ fun PickupMapScreen(
                         )
                     }
                     pickup?.let { latLng ->
+                        val pickupMarkerIcon = if (uiState.isServicePayment) {
+                            serviceIcon ?: bitmapDescriptorFromRes(context, R.drawable.ic_service)
+                        } else {
+                            shopIcon ?: bitmapDescriptorFromRes(context, R.drawable.ic_shop)
+                        }
                         Marker(
                             state = MarkerState(position = latLng),
-                            title = uiState.pickupTitle ?: "Restaurante",
+                            title = uiState.pickupTitle
+                                ?: if (uiState.isServicePayment) "Punto de pago" else "Restaurante",
                             snippet = uiState.pickupAddress,
-                            icon = shopIcon ?: bitmapDescriptorFromRes(context, R.drawable.ic_shop),
+                            icon = pickupMarkerIcon,
                         )
                     }
                     if (current != null) {
@@ -341,9 +363,17 @@ fun PickupMapScreen(
                     ) {
                         Text(
                             text = if (uiState.pickupAddress != null) {
-                                "No se pudo geocodificar la dirección del restaurante."
+                                if (uiState.isServicePayment) {
+                                    "No se pudo ubicar el punto de pago del servicio."
+                                } else {
+                                    "No se pudo geocodificar la dirección del restaurante."
+                                }
                             } else {
-                                "Este pedido no tiene datos de tienda para mostrar la ruta."
+                                if (uiState.isServicePayment) {
+                                    "Este pedido no tiene ubicación del servicio para mostrar la ruta."
+                                } else {
+                                    "Este pedido no tiene datos de tienda para mostrar la ruta."
+                                }
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = DobbyGoColors.TextSecondary,
@@ -359,6 +389,9 @@ fun PickupMapScreen(
                             pickupCodeInput = uiState.pickupCodeInput,
                             pickupCodeValid = uiState.pickupCodeValid,
                             isVerifyingPickupCode = uiState.isVerifyingPickupCode,
+                            pickupCodeRequired = uiState.pickupCodeRequired,
+                            isServicePayment = uiState.isServicePayment,
+                            serviceItems = uiState.serviceItems,
                             isAtPickupLocation = uiState.isAtPickupLocation,
                             distanceToPickupMeters = uiState.distanceToPickupMeters,
                             onPickupCodeChange = viewModel::onPickupCodeChange,
@@ -375,6 +408,7 @@ fun PickupMapScreen(
 
 @Composable
 private fun PickupMapTopBar(
+    title: String,
     onBack: () -> Unit,
     onHelp: () -> Unit,
 ) {
@@ -396,7 +430,7 @@ private fun PickupMapTopBar(
             )
         }
         Text(
-            text = "Ruta al restaurante",
+            text = title,
             modifier = Modifier.align(Alignment.Center),
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
@@ -511,6 +545,9 @@ private fun PickupBottomPanel(
     pickupCodeInput: String,
     pickupCodeValid: Boolean?,
     isVerifyingPickupCode: Boolean,
+    pickupCodeRequired: Boolean,
+    isServicePayment: Boolean,
+    serviceItems: List<DeliveryOrderItemDto>,
     isAtPickupLocation: Boolean,
     distanceToPickupMeters: Double?,
     onPickupCodeChange: (String) -> Unit,
@@ -518,9 +555,16 @@ private fun PickupBottomPanel(
     onStartDelivery: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val canStartDelivery = pickupCodeValid == true &&
-        isAtPickupLocation &&
-        !isVerifyingPickupCode
+    val canStartDelivery = if (pickupCodeRequired) {
+        pickupCodeValid == true && isAtPickupLocation && !isVerifyingPickupCode
+    } else {
+        isAtPickupLocation
+    }
+    val primaryButtonLabel = if (isServicePayment) {
+        "Ya pagué · Ir al cliente"
+    } else {
+        "Comenzar envío"
+    }
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
@@ -543,121 +587,179 @@ private fun PickupBottomPanel(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = DobbyGoColors.PurpleLight,
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(DobbyGoColors.Purple.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Assignment,
-                            contentDescription = null,
-                            tint = DobbyGoColors.Purple,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Indicaciones para recoger",
-                            fontWeight = FontWeight.Bold,
-                            color = DobbyGoColors.TextPrimary,
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        val cliente = formatCustomerFullName(customerName, customerLastName)
-                        val pedidoNumero = orderDisplayNumber(orderId)
-                        Text(
-                            text = buildAnnotatedString {
-                                append("Preséntate en el mostrador y menciona que vas por el pedido ")
-                                withStyle(
-                                    SpanStyle(
-                                        color = DobbyGoColors.Purple,
-                                        fontWeight = FontWeight.Bold,
-                                    ),
-                                ) {
-                                    append(pedidoNumero)
-                                }
-                                append(" de ")
-                                withStyle(
-                                    SpanStyle(
-                                        color = DobbyGoColors.Purple,
-                                        fontWeight = FontWeight.Bold,
-                                    ),
-                                ) {
-                                    append(cliente)
-                                }
-                                append(".")
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = DobbyGoColors.TextSecondary,
-                            lineHeight = 20.sp,
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            OutlinedTextField(
-                value = pickupCodeInput,
-                onValueChange = onPickupCodeChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Código de la tienda") },
-                placeholder = { Text("6 dígitos") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = DobbyGoColors.Purple,
-                    focusedLabelColor = DobbyGoColors.Purple,
-                    cursorColor = DobbyGoColors.Purple,
-                ),
-            )
-
-            Text(
-                text = "Pide el código en mostrador antes de recoger el pedido.",
-                style = MaterialTheme.typography.bodySmall,
-                color = DobbyGoColors.TextSecondary,
-                modifier = Modifier.padding(top = 6.dp),
-            )
-
-            when {
-                pickupCodeInput.length == 6 && isVerifyingPickupCode -> {
+            if (isServicePayment) {
+                Text(
+                    text = "Servicios a pagar",
+                    fontWeight = FontWeight.Bold,
+                    color = DobbyGoColors.TextPrimary,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                if (serviceItems.isEmpty()) {
                     Text(
-                        text = "Verificando código…",
-                        style = MaterialTheme.typography.bodySmall,
+                        text = "No hay servicios en este pedido.",
+                        style = MaterialTheme.typography.bodyMedium,
                         color = DobbyGoColors.TextSecondary,
-                        modifier = Modifier.padding(top = 6.dp),
                     )
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 180.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        serviceItems.forEach { item ->
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Text(
+                                    text = item.productName ?: "Servicio",
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = DobbyGoColors.TextPrimary,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = "Número: ${item.serviceNumber?.takeIf { it.isNotBlank() } ?: "—"}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = DobbyGoColors.TextSecondary,
+                                )
+                                Text(
+                                    text = "Cantidad: $${
+                                        String.format(Locale.getDefault(), "%.2f", item.displayAmount)
+                                    }",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = DobbyGoColors.Purple,
+                                )
+                            }
+                        }
+                    }
                 }
-                pickupCodeInput.length == 6 && pickupCodeValid == false -> {
-                    Text(
-                        text = "Código incorrecto. Verifica con la tienda.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
+            } else {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = DobbyGoColors.PurpleLight,
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(DobbyGoColors.Purple.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Assignment,
+                                contentDescription = null,
+                                tint = DobbyGoColors.Purple,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Indicaciones para recoger",
+                                fontWeight = FontWeight.Bold,
+                                color = DobbyGoColors.TextPrimary,
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val cliente = formatCustomerFullName(customerName, customerLastName)
+                            val pedidoNumero = orderDisplayNumber(orderId)
+                            Text(
+                                text = buildAnnotatedString {
+                                    append("Preséntate en el mostrador y menciona que vas por el pedido ")
+                                    withStyle(
+                                        SpanStyle(
+                                            color = DobbyGoColors.Purple,
+                                            fontWeight = FontWeight.Bold,
+                                        ),
+                                    ) {
+                                        append(pedidoNumero)
+                                    }
+                                    append(" de ")
+                                    withStyle(
+                                        SpanStyle(
+                                            color = DobbyGoColors.Purple,
+                                            fontWeight = FontWeight.Bold,
+                                        ),
+                                    ) {
+                                        append(cliente)
+                                    }
+                                    append(".")
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = DobbyGoColors.TextSecondary,
+                                lineHeight = 20.sp,
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                OutlinedTextField(
+                    value = pickupCodeInput,
+                    onValueChange = onPickupCodeChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Código de la tienda") },
+                    placeholder = { Text("6 dígitos") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = DobbyGoColors.Purple,
+                        focusedLabelColor = DobbyGoColors.Purple,
+                        cursorColor = DobbyGoColors.Purple,
+                    ),
+                )
+
+                Text(
+                    text = "Pide el código en mostrador antes de recoger el pedido.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = DobbyGoColors.TextSecondary,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+
+                when {
+                    pickupCodeInput.length == 6 && isVerifyingPickupCode -> {
+                        Text(
+                            text = "Verificando código…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = DobbyGoColors.TextSecondary,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
+                    pickupCodeInput.length == 6 && pickupCodeValid == false -> {
+                        Text(
+                            text = "Código incorrecto. Verifica con la tienda.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
                 }
             }
 
             val locationHint = when {
-                isAtPickupLocation -> "Estás en el restaurante."
+                isAtPickupLocation -> {
+                    if (isServicePayment) "Estás en el punto del servicio." else "Estás en el restaurante."
+                }
                 distanceToPickupMeters != null -> {
                     val meters = distanceToPickupMeters.roundToInt()
-                    "Acércate al restaurante (a $meters m, máx. 20 m)."
+                    if (isServicePayment) {
+                        "Acércate al punto del servicio (a $meters m, máx. 20 m)."
+                    } else {
+                        "Acércate al restaurante (a $meters m, máx. 20 m)."
+                    }
                 }
-                else -> "Activa tu ubicación para validar que estás en el restaurante."
+                else -> if (isServicePayment) {
+                    "Activa tu ubicación para validar que estás en el punto del servicio."
+                } else {
+                    "Activa tu ubicación para validar que estás en el restaurante."
+                }
             }
             Text(
                 text = locationHint,
@@ -699,7 +801,7 @@ private fun PickupBottomPanel(
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Comenzar envío",
+                        text = primaryButtonLabel,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 16.sp,
                         color = Color.White,

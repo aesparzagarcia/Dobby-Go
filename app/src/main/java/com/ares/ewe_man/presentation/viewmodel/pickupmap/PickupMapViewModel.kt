@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ares.ewe_man.core.network.toUserFacingMessage
 import com.ares.ewe_man.data.location.LocationProvider
+import com.ares.ewe_man.data.remote.model.DeliveryOrderItemDto
 import com.ares.ewe_man.domain.repository.DirectionsRepository
 import com.ares.ewe_man.domain.repository.OrderRepository
 import com.google.android.gms.maps.model.LatLng
@@ -47,6 +48,10 @@ data class PickupMapUiState(
     /** null = aún no verificado; true/false tras validar con el servidor. */
     val pickupCodeValid: Boolean? = null,
     val isVerifyingPickupCode: Boolean = false,
+    /** Pedidos de tienda requieren código; pagos de servicio no. */
+    val pickupCodeRequired: Boolean = true,
+    val isServicePayment: Boolean = false,
+    val serviceItems: List<DeliveryOrderItemDto> = emptyList(),
     /** Dentro de [PICKUP_ARRIVAL_RADIUS_METERS] del restaurante. */
     val isAtPickupLocation: Boolean = false,
     val isStartingDelivery: Boolean = false,
@@ -109,9 +114,16 @@ class PickupMapViewModel @Inject constructor(
             val pickupLatLng = if (shopLat != null && shopLng != null) {
                 LatLng(shopLat, shopLng)
             } else null
-            val title = order.shopName ?: "Restaurante"
+            val isServicePayment = order.isServicePayment
+            val title = when {
+                isServicePayment -> order.shopName ?: "Punto de pago"
+                else -> order.shopName ?: "Restaurante"
+            }
             val status = order.status.uppercase()
-            if (status == "ON_DELIVERY") {
+            val pickupCodeRequired = order.pickupCodeRequired
+            // Tienda: si ya está ON_DELIVERY, ir al mapa de entrega.
+            // Servicio: ON_DELIVERY al aceptar; aquí sigue la ruta al punto de pago.
+            if (status == "ON_DELIVERY" && !isServicePayment) {
                 _uiState.value = _uiState.value.copy(
                     orderStatus = status,
                     isLoading = false,
@@ -119,7 +131,9 @@ class PickupMapViewModel @Inject constructor(
                 _navigateToDelivery.tryEmit(Unit)
                 return@launch
             }
-            if (status != "ASSIGNED") {
+            val canShowPickupRoute =
+                status == "ASSIGNED" || (isServicePayment && status == "ON_DELIVERY")
+            if (!canShowPickupRoute) {
                 _uiState.value = _uiState.value.copy(
                     orderStatus = status,
                     isLoading = false,
@@ -139,6 +153,10 @@ class PickupMapViewModel @Inject constructor(
                 customerLastName = order.customerLastName,
                 orderStatus = status,
                 pickupCodeInput = "",
+                pickupCodeRequired = pickupCodeRequired,
+                pickupCodeValid = if (pickupCodeRequired) null else true,
+                isServicePayment = isServicePayment,
+                serviceItems = if (isServicePayment) order.items else emptyList(),
             )
             locationProvider.getCurrentLocation()
                 .onSuccess { update ->
@@ -285,17 +303,19 @@ class PickupMapViewModel @Inject constructor(
     fun startDelivery(onSuccess: () -> Unit) {
         val state = _uiState.value
         val code = state.pickupCodeInput
-        if (orderId.isBlank() ||
-            state.orderStatus != "ASSIGNED" ||
-            code.length != 6 ||
-            state.pickupCodeValid != true ||
-            !state.isAtPickupLocation
-        ) {
+        val codeOk = if (state.pickupCodeRequired) {
+            code.length == 6 && state.pickupCodeValid == true
+        } else {
+            true
+        }
+        val statusOk = state.orderStatus == "ASSIGNED" ||
+            (state.isServicePayment && state.orderStatus == "ON_DELIVERY")
+        if (orderId.isBlank() || !statusOk || !codeOk || !state.isAtPickupLocation) {
             return
         }
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isStartingDelivery = true, errorMessage = null)
-            orderRepository.startDelivery(orderId, code)
+            orderRepository.startDelivery(orderId, if (state.pickupCodeRequired) code else "")
                 .onSuccess {
                     _uiState.value = _uiState.value.copy(isStartingDelivery = false)
                     onSuccess()

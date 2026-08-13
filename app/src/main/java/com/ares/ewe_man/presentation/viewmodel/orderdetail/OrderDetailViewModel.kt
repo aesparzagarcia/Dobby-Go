@@ -94,8 +94,10 @@ class OrderDetailViewModel @Inject constructor(
                 .onSuccess {
                     refreshAssignAvailabilitySync()
                     val refreshed = orderRepository.getOrderById(orderId).getOrNull()
+                    val fallbackStatus =
+                        if (_uiState.value.order?.isServicePayment == true) "ON_DELIVERY" else "ASSIGNED"
                     _uiState.value = _uiState.value.copy(
-                        order = refreshed ?: _uiState.value.order?.copy(status = "ASSIGNED"),
+                        order = refreshed ?: _uiState.value.order?.copy(status = fallbackStatus),
                         isAssigning = false,
                     )
                     onSuccess()

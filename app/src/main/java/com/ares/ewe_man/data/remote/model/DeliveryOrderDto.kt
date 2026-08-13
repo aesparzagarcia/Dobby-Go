@@ -20,8 +20,15 @@ data class DeliveryOrderDto(
     @SerializedName("shopLng") val shopLng: Double? = null,
     @SerializedName("customerName") val customerName: String?,
     @SerializedName("customerLastName") val customerLastName: String? = null,
+    @SerializedName("pickup_code_required") val pickupCodeRequired: Boolean = true,
+    @SerializedName("order_type") val orderType: String? = null,
+    /** SERVICE_PAYMENT accepted but payment at service point not confirmed yet. */
+    @SerializedName("service_payment_pending") val servicePaymentPending: Boolean = false,
     @SerializedName("items") val items: List<DeliveryOrderItemDto>
 ) {
+    val isServicePayment: Boolean
+        get() = orderType.equals("SERVICE_PAYMENT", ignoreCase = true) || !pickupCodeRequired
+
     /** Hora a mostrar: entrega si ya está entregado; si no, creación del pedido. */
     fun displayAt(): String {
         val delivered = deliveredAt?.trim().orEmpty()
@@ -36,7 +43,11 @@ data class DeliveryOrderDto(
 data class DeliveryOrderItemDto(
     @SerializedName("productId") val productId: String,
     @SerializedName("productName") val productName: String?,
+    @SerializedName("service_number") val serviceNumber: String? = null,
     @SerializedName("quantity") val quantity: Int,
     @SerializedName("price") val price: Double,
+    @SerializedName("amount") val amount: Double? = null,
     @SerializedName("imageUrl") val imageUrl: String? = null,
-)
+) {
+    val displayAmount: Double get() = amount ?: price
+}

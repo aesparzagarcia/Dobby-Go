@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.Theme_DobbyGo)
         super.onCreate(savedInstanceState)
         consumeNotificationIntent(intent)
         enableEdgeToEdge()

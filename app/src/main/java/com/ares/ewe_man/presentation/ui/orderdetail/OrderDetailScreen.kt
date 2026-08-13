@@ -381,7 +381,7 @@ private fun OrderDetailCard(
                     modifier = Modifier.size(20.dp),
                 )
                 Text(
-                    text = "Productos",
+                    text = if (order.isServicePayment) "Servicios" else "Productos",
                     fontWeight = FontWeight.SemiBold,
                     color = DobbyGoColors.Purple,
                 )
@@ -397,7 +397,7 @@ private fun OrderDetailCard(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 order.items.forEach { item ->
-                    OrderProductRow(item = item)
+                    OrderProductRow(item = item, isServicePayment = order.isServicePayment)
                 }
             }
 
@@ -506,8 +506,11 @@ private fun AssignBlockedInfoBox(message: String) {
 }
 
 @Composable
-private fun OrderProductRow(item: DeliveryOrderItemDto) {
-    val name = item.productName ?: "Producto"
+private fun OrderProductRow(
+    item: DeliveryOrderItemDto,
+    isServicePayment: Boolean = false,
+) {
+    val name = item.productName ?: if (isServicePayment) "Servicio" else "Producto"
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -539,20 +542,34 @@ private fun OrderProductRow(item: DeliveryOrderItemDto) {
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = item.productName ?: "Producto",
+                text = name,
                 fontWeight = FontWeight.SemiBold,
                 color = DobbyGoColors.TextPrimary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = "x${item.quantity}",
-                style = MaterialTheme.typography.bodySmall,
-                color = DobbyGoColors.TextSecondary,
-            )
+            if (isServicePayment) {
+                Text(
+                    text = "Número: ${item.serviceNumber?.takeIf { it.isNotBlank() } ?: "—"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = DobbyGoColors.TextSecondary,
+                )
+            } else {
+                Text(
+                    text = "x${item.quantity}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = DobbyGoColors.TextSecondary,
+                )
+            }
         }
         Text(
-            text = "$${String.format(Locale.getDefault(), "%.2f", item.price * item.quantity)}",
+            text = "$${
+                String.format(
+                    Locale.getDefault(),
+                    "%.2f",
+                    if (isServicePayment) item.displayAmount else item.price * item.quantity,
+                )
+            }",
             fontWeight = FontWeight.SemiBold,
             color = DobbyGoColors.TextPrimary,
         )
@@ -616,8 +633,16 @@ private fun OrderDetailBottomActions(
 ) {
     val (label, onClick, showCheckIcon) = when (order.status) {
         "READY_FOR_PICKUP" -> Triple("Asignar a mí", onAssignToMe, true)
-        "ASSIGNED" -> Triple("Ruta al restaurante", onOpenPickupMap, false)
-        "ON_DELIVERY" -> Triple("Ver mapa", onOpenMap, false)
+        "ASSIGNED" -> Triple(
+            if (order.isServicePayment) "Ruta a pagar el servicio" else "Ruta al restaurante",
+            onOpenPickupMap,
+            false,
+        )
+        "ON_DELIVERY" -> when {
+            order.isServicePayment && order.servicePaymentPending ->
+                Triple("Ruta a pagar el servicio", onOpenPickupMap, false)
+            else -> Triple("Ver mapa", onOpenMap, false)
+        }
         else -> return
     }
     val actionEnabled = when (order.status) {
