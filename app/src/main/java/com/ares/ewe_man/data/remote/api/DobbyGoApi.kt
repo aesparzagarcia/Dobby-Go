@@ -12,6 +12,8 @@ import com.ares.ewe_man.data.remote.model.DeliveryRequestOtpResponse
 import com.ares.ewe_man.data.remote.model.StartDeliveryRequest
 import com.ares.ewe_man.data.remote.model.StartDeliveryResponse
 import com.ares.ewe_man.data.remote.model.MarkDeliveredRequest
+import com.ares.ewe_man.data.remote.model.RateCustomerRequest
+import com.ares.ewe_man.data.remote.model.RateCustomerResponse
 import com.ares.ewe_man.data.remote.model.VerifyDeliveryCodeRequest
 import com.ares.ewe_man.data.remote.model.VerifyPickupCodeResponse
 import com.ares.ewe_man.data.remote.model.UpdateDeliveryEtaRequest
@@ -89,6 +91,12 @@ interface DobbyGoApi {
         @Path("id") orderId: String,
         @Body body: MarkDeliveredRequest,
     ): DeliveredOrderResponse
+
+    @POST("delivery/orders/{id}/rate-customer")
+    suspend fun rateCustomer(
+        @Path("id") orderId: String,
+        @Body body: RateCustomerRequest,
+    ): RateCustomerResponse
 
     @PATCH("delivery/location")
     suspend fun updateLocation(@Body body: UpdateLocationRequest): UpdateLocationResponse

@@ -8,15 +8,12 @@ import com.ares.ewe_man.data.location.LocationProvider
 import com.ares.ewe_man.data.remote.model.DeliveryOrderItemDto
 import com.ares.ewe_man.domain.repository.DirectionsRepository
 import com.ares.ewe_man.domain.repository.OrderRepository
+import com.ares.ewe_man.presentation.ui.map.CourierHeading
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.Locale
 import javax.inject.Inject
-import kotlin.math.abs
-import kotlin.math.atan2
-import kotlin.math.cos
 import kotlin.math.roundToInt
-import kotlin.math.sin
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -331,7 +328,7 @@ class PickupMapViewModel @Inject constructor(
 
     private fun distanceToPickupMeters(current: LatLng, pickup: LatLng?): Double? {
         if (pickup == null) return null
-        return distanceInMeters(current, pickup)
+        return CourierHeading.distanceMeters(current, pickup)
     }
 
     private fun isWithinPickupRadius(distanceMeters: Double?): Boolean =
@@ -342,56 +339,24 @@ class PickupMapViewModel @Inject constructor(
         bearingFromGps: Float?,
         speedMps: Float?
     ): Float {
-        val target: Float? = when {
-            bearingFromGps != null && (speedMps == null || speedMps > 0.12f) ->
-                normalizeHeadingDegrees(bearingFromGps)
-            else -> {
-                val prev = previousLatLng
-                if (prev != null && distanceInMeters(prev, latLng) > 0.65) {
-                    computeBearingBetween(prev, latLng)
-                } else {
-                    null
-                }
+        val routeHeading = CourierHeading.alongRoute(latLng, _uiState.value.routePoints)
+        val gpsOk = bearingFromGps != null && (speedMps == null || speedMps > 0.12f)
+        val movementHeading = previousLatLng?.let { prev ->
+            if (CourierHeading.distanceMeters(prev, latLng) > 0.65) {
+                CourierHeading.bearingBetween(prev, latLng)
+            } else {
+                null
             }
         }
+        val target = routeHeading
+            ?: (if (gpsOk) CourierHeading.normalizeDegrees(bearingFromGps!!) else null)
+            ?: movementHeading
         if (target != null) {
-            smoothedHeading = smoothHeadingToward(smoothedHeading, target)
+            smoothedHeading = CourierHeading.smoothToward(smoothedHeading, target)
         }
         return smoothedHeading
     }
 
-    private fun normalizeHeadingDegrees(deg: Float): Float =
-        ((deg % 360f) + 360f) % 360f
-
-    private fun smoothHeadingToward(current: Float, target: Float): Float {
-        val diff = ((target - current + 540f) % 360f) - 180f
-        val ad = abs(diff)
-        val alpha = when {
-            ad > 50f -> 0.82f
-            ad > 20f -> 0.58f
-            else -> 0.38f
-        }
-        return normalizeHeadingDegrees(current + diff * alpha)
-    }
-
-    private fun computeBearingBetween(from: LatLng, to: LatLng): Float {
-        val lat1 = Math.toRadians(from.latitude)
-        val lat2 = Math.toRadians(to.latitude)
-        val dLng = Math.toRadians(to.longitude - from.longitude)
-        val y = sin(dLng) * cos(lat2)
-        val x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLng)
-        val bearing = Math.toDegrees(atan2(y, x))
-        return normalizeHeadingDegrees(bearing.toFloat())
-    }
-
-    private fun distanceInMeters(a: LatLng, b: LatLng): Double {
-        val earthRadius = 6_371_000.0
-        val dLat = Math.toRadians(b.latitude - a.latitude)
-        val dLng = Math.toRadians(b.longitude - a.longitude)
-        val x = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(Math.toRadians(a.latitude)) * Math.cos(Math.toRadians(b.latitude)) *
-            Math.sin(dLng / 2) * Math.sin(dLng / 2)
-        val c = 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))
-        return earthRadius * c
-    }
+    private fun distanceInMeters(a: LatLng, b: LatLng): Double =
+        CourierHeading.distanceMeters(a, b)
 }

@@ -20,6 +20,8 @@ data class DeliveryOrderDto(
     @SerializedName("shopLng") val shopLng: Double? = null,
     @SerializedName("customerName") val customerName: String?,
     @SerializedName("customerLastName") val customerLastName: String? = null,
+    @SerializedName("customerPhone") val customerPhone: String? = null,
+    @SerializedName("customer_phone") val customerPhoneSnake: String? = null,
     @SerializedName("pickup_code_required") val pickupCodeRequired: Boolean = true,
     @SerializedName("order_type") val orderType: String? = null,
     /** SERVICE_PAYMENT accepted but payment at service point not confirmed yet. */
@@ -28,6 +30,11 @@ data class DeliveryOrderDto(
 ) {
     val isServicePayment: Boolean
         get() = orderType.equals("SERVICE_PAYMENT", ignoreCase = true) || !pickupCodeRequired
+
+    /** Prefer camelCase; fall back to snake_case from API. */
+    val resolvedCustomerPhone: String?
+        get() = customerPhone?.trim()?.takeIf { it.isNotEmpty() }
+            ?: customerPhoneSnake?.trim()?.takeIf { it.isNotEmpty() }
 
     /** Hora a mostrar: entrega si ya está entregado; si no, creación del pedido. */
     fun displayAt(): String {

@@ -4,6 +4,7 @@ import com.ares.ewe_man.data.remote.api.DobbyGoApi
 import com.ares.ewe_man.data.remote.model.DeliveryOrderDto
 import com.ares.ewe_man.data.remote.model.StartDeliveryRequest
 import com.ares.ewe_man.data.remote.model.MarkDeliveredRequest
+import com.ares.ewe_man.data.remote.model.RateCustomerRequest
 import com.ares.ewe_man.data.remote.model.VerifyDeliveryCodeRequest
 import com.ares.ewe_man.data.remote.model.UpdateDeliveryEtaRequest
 import com.ares.ewe_man.data.remote.model.VerifyPickupCodeRequest
@@ -86,6 +87,31 @@ class OrderRepositoryImpl @Inject constructor(
         return try {
             api.markDelivered(orderId, MarkDeliveredRequest(deliveryCode = deliveryCode))
             Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun rateCustomer(
+        orderId: String,
+        stars: Int?,
+        punctual: Boolean?,
+        paysWell: Boolean?,
+        tipped: Boolean?,
+        recommended: Boolean?,
+    ): Result<Int> {
+        return try {
+            val response = api.rateCustomer(
+                orderId,
+                RateCustomerRequest(
+                    stars = stars,
+                    punctual = punctual,
+                    paysWell = paysWell,
+                    tipped = tipped,
+                    recommended = recommended,
+                ),
+            )
+            Result.success(response.xpGained)
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -16,7 +16,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun SplashScreen(
     onOpenAuth: () -> Unit,
-    onOpenHome: () -> Unit,
+    onOpenHome: suspend () -> Unit,
     viewModel: SplashViewModel = hiltViewModel()
 ) {
     LaunchedEffect(Unit) {

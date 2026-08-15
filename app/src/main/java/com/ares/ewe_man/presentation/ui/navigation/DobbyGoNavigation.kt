@@ -7,11 +7,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import androidx.navigation.NavType
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -25,10 +25,12 @@ import com.ares.ewe_man.presentation.ui.main.MainScreen
 import com.ares.ewe_man.presentation.ui.orderdetail.OrderDetailScreen
 import com.ares.ewe_man.presentation.ui.pickupmap.PickupMapScreen
 import com.ares.ewe_man.presentation.ui.splash.SplashScreen
+import com.ares.ewe_man.presentation.viewmodel.nav.ActiveOrderResumeViewModel
 import com.ares.ewe_man.presentation.viewmodel.nav.OrdersRefreshViewModel
-import androidx.hilt.navigation.compose.hiltViewModel
 import dagger.hilt.android.EntryPointAccessors
-
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 @Composable
 fun DobbyGoNavigation(
     pendingOrderId: String? = null,
@@ -52,6 +54,8 @@ fun DobbyGoNavigation(
         }
     }
     val refreshVm = hiltViewModel<OrdersRefreshViewModel>()
+    val resumeVm = hiltViewModel<ActiveOrderResumeViewModel>()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(pendingOrderId) {
         val orderId = pendingOrderId ?: return@LaunchedEffect
@@ -70,6 +74,27 @@ fun DobbyGoNavigation(
         onPendingOrderNavigated()
     }
 
+    suspend fun openHomeResumingActiveOrder(skipResume: Boolean) {
+        navController.navigate(DobbyGoScreens.Main) {
+            popUpTo(navController.graph.id) { inclusive = true }
+            launchSingleTop = true
+        }
+        if (skipResume) return
+        when (val resume = resumeVm.resolve()) {
+            is ActiveOrderResume.PickupMap -> {
+                navController.navigate(DobbyGoScreens.pickupMap(resume.orderId)) {
+                    launchSingleTop = true
+                }
+            }
+            is ActiveOrderResume.DeliveryMap -> {
+                navController.navigate(DobbyGoScreens.deliveryMap(resume.orderId)) {
+                    launchSingleTop = true
+                }
+            }
+            null -> Unit
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = DobbyGoScreens.Splash
@@ -82,10 +107,8 @@ fun DobbyGoNavigation(
                     }
                 },
                 onOpenHome = {
-                    navController.navigate(DobbyGoScreens.Main) {
-                        popUpTo(navController.graph.id) { inclusive = true }
-                        launchSingleTop = true
-                    }
+                    // Notification deep-link owns navigation when present.
+                    openHomeResumingActiveOrder(skipResume = pendingOrderId != null)
                 }
             )
         }
@@ -105,9 +128,8 @@ fun DobbyGoNavigation(
             OtpScreen(
                 onBack = { navController.popBackStack() },
                 onVerified = {
-                    navController.navigate(DobbyGoScreens.Main) {
-                        popUpTo(navController.graph.id) { inclusive = true }
-                        launchSingleTop = true
+                    scope.launch {
+                        openHomeResumingActiveOrder(skipResume = false)
                     }
                 }
             )

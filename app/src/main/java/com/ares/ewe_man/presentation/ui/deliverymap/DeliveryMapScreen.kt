@@ -1,48 +1,68 @@
 package com.ares.ewe_man.presentation.ui.deliverymap
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -52,6 +72,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -60,9 +81,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -71,6 +93,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.ares.ewe_man.R
 import com.ares.ewe_man.core.theme.DobbyGoColors
 import com.ares.ewe_man.core.util.splitDeliveryAddressForDisplay
+import com.ares.ewe_man.presentation.ui.components.SixDigitCodeField
 import com.ares.ewe_man.presentation.ui.map.ObserveMapGesturesDisableFollow
 import com.ares.ewe_man.presentation.ui.map.animateToRider
 import com.ares.ewe_man.presentation.viewmodel.deliverymap.DeliveryMapViewModel
@@ -112,6 +135,7 @@ private fun formatEtaDisplay(eta: String?): String {
         .replace(" minutos", " min", ignoreCase = true)
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DeliveryMapScreen(
     onBack: () -> Unit,
@@ -170,7 +194,7 @@ fun DeliveryMapScreen(
             houseIcon = bitmapDescriptorFromRes(context, R.drawable.ic_house)
         }
         if (deliveryIcon == null) {
-            deliveryIcon = bitmapDescriptorFromRes(context, R.drawable.ic_delivery)
+            deliveryIcon = bitmapDescriptorFromRes(context, R.drawable.ic_nav_arrow, sizeDp = 40)
         }
     }
 
@@ -225,11 +249,12 @@ fun DeliveryMapScreen(
                 }
             }
         } else {
+            val imeVisible = WindowInsets.isImeVisible
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .navigationBarsPadding(),
+                    .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
             ) {
                 GoogleMap(
                     modifier = Modifier.fillMaxSize(),
@@ -264,7 +289,7 @@ fun DeliveryMapScreen(
                             state = riderMarkerState,
                             title = "Tu ubicación",
                             icon = deliveryIcon
-                                ?: bitmapDescriptorFromRes(context, R.drawable.ic_delivery),
+                                ?: bitmapDescriptorFromRes(context, R.drawable.ic_nav_arrow, sizeDp = 40),
                             rotation = uiState.headingDegrees + DRIVER_ICON_ROTATION_OFFSET_DEG,
                             flat = true,
                         )
@@ -279,34 +304,6 @@ fun DeliveryMapScreen(
                     distanceText = uiState.remainingDistanceText ?: "--",
                     etaIsApproximate = uiState.etaIsApproximate,
                 )
-
-                if (current != null) {
-                    Surface(
-                        onClick = {
-                            followRider = true
-                            scope.launch {
-                                cameraPositionState.animateToRider(
-                                    current,
-                                    uiState.headingDegrees,
-                                    durationMs = 300,
-                                )
-                            }
-                        },
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(start = 16.dp, bottom = 16.dp),
-                        shape = CircleShape,
-                        color = DobbyGoColors.Surface,
-                        shadowElevation = 4.dp,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Navigation,
-                            contentDescription = "Centrar mapa",
-                            tint = DobbyGoColors.Purple,
-                            modifier = Modifier.padding(12.dp),
-                        )
-                    }
-                }
 
                 if (delivery == null && uiState.deliveryAddress != null) {
                     Surface(
@@ -324,22 +321,83 @@ fun DeliveryMapScreen(
                             modifier = Modifier.padding(16.dp),
                         )
                     }
-                } else if (delivery != null && !uiState.isDelivered) {
-                    DeliveryBottomPanel(
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                        deliveryAddress = uiState.deliveryAddress,
-                        customerInstructions = uiState.customerInstructions,
-                        hasMarkedArrived = uiState.hasMarkedArrived,
-                        isNearDestination = uiState.isNearDestination,
-                        isMarkingArrived = uiState.isMarkingArrived,
-                        deliveryCodeInput = uiState.deliveryCodeInput,
-                        deliveryCodeValid = uiState.deliveryCodeValid,
-                        isVerifyingDeliveryCode = uiState.isVerifyingDeliveryCode,
-                        isMarkingDelivered = uiState.isMarkingDelivered,
-                        onDeliveryCodeChange = { viewModel.onDeliveryCodeChange(it) },
-                        onMarkArrived = { viewModel.markArrived() },
-                        onMarkDelivered = { viewModel.markDelivered(onSuccess = onBack) },
-                    )
+                }
+
+                val showDeliveryPanel =
+                    delivery != null && (!uiState.isDelivered || uiState.showCustomerRating)
+
+                // Recenter stays glued to the top of the bottom sheet (moves down when collapsed).
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth(),
+                ) {
+                    if (current != null && !imeVisible) {
+                        Surface(
+                            onClick = {
+                                followRider = true
+                                scope.launch {
+                                    cameraPositionState.animateToRider(
+                                        current,
+                                        uiState.headingDegrees,
+                                        durationMs = 300,
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .align(Alignment.Start)
+                                .padding(start = 16.dp, bottom = 12.dp),
+                            shape = CircleShape,
+                            color = DobbyGoColors.Surface,
+                            shadowElevation = 4.dp,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MyLocation,
+                                contentDescription = "Centrar mapa",
+                                tint = DobbyGoColors.Purple,
+                                modifier = Modifier.padding(12.dp),
+                            )
+                        }
+                    }
+
+                    if (showDeliveryPanel) {
+                        DeliveryBottomPanel(
+                            modifier = Modifier.fillMaxWidth(),
+                            deliveryAddress = uiState.deliveryAddress,
+                            customerInstructions = uiState.customerInstructions,
+                            hasMarkedArrived = uiState.hasMarkedArrived,
+                            isNearDestination = uiState.isNearDestination,
+                            isMarkingArrived = uiState.isMarkingArrived,
+                            canCallCustomer = uiState.canCallCustomer,
+                            customerPhone = uiState.customerPhone,
+                            deliveryCodeInput = uiState.deliveryCodeInput,
+                            deliveryCodeValid = uiState.deliveryCodeValid,
+                            isVerifyingDeliveryCode = uiState.isVerifyingDeliveryCode,
+                            isMarkingDelivered = uiState.isMarkingDelivered,
+                            showCustomerRating = uiState.showCustomerRating,
+                            customerRatingStars = uiState.customerRatingStars,
+                            customerPunctual = uiState.customerPunctual,
+                            customerPaysWell = uiState.customerPaysWell,
+                            customerTipped = uiState.customerTipped,
+                            customerRecommended = uiState.customerRecommended,
+                            isSubmittingCustomerRating = uiState.isSubmittingCustomerRating,
+                            compactForKeyboard = imeVisible,
+                            onDeliveryCodeChange = { viewModel.onDeliveryCodeChange(it) },
+                            onMarkArrived = { viewModel.markArrived() },
+                            onMarkDelivered = { viewModel.markDelivered(onSuccess = onBack) },
+                            onCallCustomer = { phone ->
+                                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
+                                runCatching { context.startActivity(intent) }
+                            },
+                            onStarsChange = { viewModel.setCustomerRatingStars(it) },
+                            onTogglePunctual = { viewModel.toggleCustomerPunctual() },
+                            onTogglePaysWell = { viewModel.toggleCustomerPaysWell() },
+                            onToggleTipped = { viewModel.toggleCustomerTipped() },
+                            onToggleRecommended = { viewModel.toggleCustomerRecommended() },
+                            onSkipCustomerRating = { viewModel.skipCustomerRating() },
+                            onSubmitCustomerRating = { viewModel.submitCustomerRating() },
+                        )
+                    }
                 }
             }
         }
@@ -486,17 +544,50 @@ private fun DeliveryBottomPanel(
     hasMarkedArrived: Boolean,
     isNearDestination: Boolean,
     isMarkingArrived: Boolean,
+    canCallCustomer: Boolean,
+    customerPhone: String?,
     deliveryCodeInput: String,
     deliveryCodeValid: Boolean?,
     isVerifyingDeliveryCode: Boolean,
     isMarkingDelivered: Boolean,
+    showCustomerRating: Boolean,
+    customerRatingStars: Int,
+    customerPunctual: Boolean,
+    customerPaysWell: Boolean,
+    customerTipped: Boolean,
+    customerRecommended: Boolean,
+    isSubmittingCustomerRating: Boolean,
     onDeliveryCodeChange: (String) -> Unit,
     onMarkArrived: () -> Unit,
     onMarkDelivered: () -> Unit,
+    onCallCustomer: (String) -> Unit,
+    onStarsChange: (Int) -> Unit,
+    onTogglePunctual: () -> Unit,
+    onTogglePaysWell: () -> Unit,
+    onToggleTipped: () -> Unit,
+    onToggleRecommended: () -> Unit,
+    onSkipCustomerRating: () -> Unit,
+    onSubmitCustomerRating: () -> Unit,
     modifier: Modifier = Modifier,
+    compactForKeyboard: Boolean = false,
 ) {
+    val configuration = LocalConfiguration.current
+    val maxPanelHeight = (configuration.screenHeightDp * if (compactForKeyboard) 0.50f else 0.72f).dp
+    val scrollState = rememberScrollState()
+    var sheetCollapsed by remember { mutableStateOf(false) }
+    var dragAccum by remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(showCustomerRating) {
+        if (showCustomerRating) sheetCollapsed = false
+    }
+
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize()
+            .then(
+                if (sheetCollapsed) Modifier else Modifier.heightIn(max = maxPanelHeight),
+            ),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         color = DobbyGoColors.Surface,
         shadowElevation = 8.dp,
@@ -504,18 +595,90 @@ private fun DeliveryBottomPanel(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 10.dp),
+                .then(
+                    if (sheetCollapsed) {
+                        Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                    } else {
+                        Modifier
+                            .verticalScroll(scrollState)
+                            .padding(horizontal = 20.dp, vertical = 10.dp)
+                    },
+                ),
         ) {
-            Box(
+            Column(
                 modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .width(40.dp)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(DobbyGoColors.Border),
-            )
+                    .fillMaxWidth()
+                    .pointerInput(sheetCollapsed) {
+                        detectVerticalDragGestures(
+                            onDragEnd = {
+                                when {
+                                    dragAccum > 48f -> sheetCollapsed = true
+                                    dragAccum < -48f -> sheetCollapsed = false
+                                }
+                                dragAccum = 0f
+                            },
+                            onVerticalDrag = { _, dragAmount ->
+                                dragAccum += dragAmount
+                            },
+                        )
+                    }
+                    .clickable { sheetCollapsed = !sheetCollapsed },
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(40.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(DobbyGoColors.Border),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = if (sheetCollapsed) "Mostrar detalles" else "Ocultar detalles",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = DobbyGoColors.TextSecondary,
+                    )
+                    Icon(
+                        imageVector = if (sheetCollapsed) {
+                            Icons.Default.KeyboardArrowUp
+                        } else {
+                            Icons.Default.KeyboardArrowDown
+                        },
+                        contentDescription = null,
+                        tint = DobbyGoColors.TextSecondary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+
+            if (sheetCollapsed) {
+                return@Column
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
+
+            if (showCustomerRating) {
+                CustomerRatingSection(
+                    stars = customerRatingStars,
+                    punctual = customerPunctual,
+                    paysWell = customerPaysWell,
+                    tipped = customerTipped,
+                    recommended = customerRecommended,
+                    isSubmitting = isSubmittingCustomerRating,
+                    onStarsChange = onStarsChange,
+                    onTogglePunctual = onTogglePunctual,
+                    onTogglePaysWell = onTogglePaysWell,
+                    onToggleTipped = onToggleTipped,
+                    onToggleRecommended = onToggleRecommended,
+                    onSkip = onSkipCustomerRating,
+                    onSubmit = onSubmitCustomerRating,
+                )
+                return@Column
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -553,58 +716,84 @@ private fun DeliveryBottomPanel(
                             color = DobbyGoColors.TextPrimary,
                             lineHeight = 20.sp,
                         )
-                        regionLine?.let { line ->
-                            Text(
-                                text = line,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = DobbyGoColors.TextSecondary,
-                                lineHeight = 18.sp,
+                        if (!compactForKeyboard) {
+                            regionLine?.let { line ->
+                                Text(
+                                    text = line,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = DobbyGoColors.TextSecondary,
+                                    lineHeight = 18.sp,
+                                )
+                            }
+                        }
+                    }
+                }
+                if (canCallCustomer && !customerPhone.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(
+                        onClick = { onCallCustomer(customerPhone) },
+                        modifier = Modifier.size(44.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(DobbyGoColors.PurpleLight),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Call,
+                                contentDescription = "Llamar al cliente",
+                                tint = DobbyGoColors.Purple,
+                                modifier = Modifier.size(22.dp),
                             )
                         }
                     }
                 }
             }
 
-            customerInstructions?.trim()?.takeIf { it.isNotBlank() }?.let { instructions ->
-                Spacer(modifier = Modifier.height(12.dp))
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = DobbyGoColors.PurpleLight,
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            if (!compactForKeyboard) {
+                customerInstructions?.trim()?.takeIf { it.isNotBlank() }?.let { instructions ->
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = DobbyGoColors.PurpleLight,
                     ) {
-                        Box(
+                        Row(
                             modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(DobbyGoColors.Purple.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center,
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Assignment,
-                                contentDescription = null,
-                                tint = DobbyGoColors.Purple,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Indicación del cliente",
-                                fontWeight = FontWeight.Bold,
-                                color = DobbyGoColors.Purple,
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = instructions,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = DobbyGoColors.TextSecondary,
-                                lineHeight = 20.sp,
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(DobbyGoColors.Purple.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Assignment,
+                                    contentDescription = null,
+                                    tint = DobbyGoColors.Purple,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Indicación del cliente",
+                                    fontWeight = FontWeight.Bold,
+                                    color = DobbyGoColors.Purple,
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = instructions,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = DobbyGoColors.TextSecondary,
+                                    lineHeight = 20.sp,
+                                )
+                            }
                         }
                     }
                 }
@@ -659,27 +848,25 @@ private fun DeliveryBottomPanel(
                     )
                 }
             } else {
-                OutlinedTextField(
+                Text(
+                    text = "Código del cliente",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = DobbyGoColors.TextPrimary,
+                    fontWeight = FontWeight.Medium,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                SixDigitCodeField(
                     value = deliveryCodeInput,
                     onValueChange = onDeliveryCodeChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Código del cliente") },
-                    placeholder = { Text("6 dígitos") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = DobbyGoColors.Purple,
-                        focusedLabelColor = DobbyGoColors.Purple,
-                        cursorColor = DobbyGoColors.Purple,
-                    ),
                 )
-                Text(
-                    text = "Pide el código al cliente en la app Dobbi.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = DobbyGoColors.TextSecondary,
-                    modifier = Modifier.padding(top = 6.dp),
-                )
+                if (!compactForKeyboard) {
+                    Text(
+                        text = "Pide el código al cliente en la app Dobbi.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = DobbyGoColors.TextSecondary,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
                 when {
                     deliveryCodeInput.length == 6 && isVerifyingDeliveryCode -> {
                         Text(
@@ -719,13 +906,6 @@ private fun DeliveryBottomPanel(
                             strokeWidth = 2.dp,
                         )
                     } else {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Confirmar entrega",
                             fontWeight = FontWeight.SemiBold,
@@ -737,4 +917,136 @@ private fun DeliveryBottomPanel(
             }
         }
     }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CustomerRatingSection(
+    stars: Int,
+    punctual: Boolean,
+    paysWell: Boolean,
+    tipped: Boolean,
+    recommended: Boolean,
+    isSubmitting: Boolean,
+    onStarsChange: (Int) -> Unit,
+    onTogglePunctual: () -> Unit,
+    onTogglePaysWell: () -> Unit,
+    onToggleTipped: () -> Unit,
+    onToggleRecommended: () -> Unit,
+    onSkip: () -> Unit,
+    onSubmit: () -> Unit,
+) {
+    Text(
+        text = "¿Cómo estuvo el cliente?",
+        fontWeight = FontWeight.Bold,
+        fontSize = 18.sp,
+        color = DobbyGoColors.TextPrimary,
+    )
+    Spacer(modifier = Modifier.height(4.dp))
+    Text(
+        text = "Opcional. Si calificas, sumas XP a tu score de repartidor.",
+        style = MaterialTheme.typography.bodySmall,
+        color = DobbyGoColors.TextSecondary,
+    )
+    Spacer(modifier = Modifier.height(16.dp))
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        (1..5).forEach { value ->
+            val selected = stars >= value
+            Icon(
+                imageVector = Icons.Filled.Star,
+                contentDescription = "$value estrellas",
+                tint = if (selected) Color(0xFFF5A524) else DobbyGoColors.Border,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clickable(enabled = !isSubmitting) { onStarsChange(value) }
+                    .padding(4.dp),
+            )
+        }
+    }
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        RatingTagChip("Usuario puntual", punctual, enabled = !isSubmitting, onClick = onTogglePunctual)
+        RatingTagChip("Usuario paga bien", paysWell, enabled = !isSubmitting, onClick = onTogglePaysWell)
+        RatingTagChip("Propina", tipped, enabled = !isSubmitting, onClick = onToggleTipped)
+        RatingTagChip("Usuario recomendado", recommended, enabled = !isSubmitting, onClick = onToggleRecommended)
+    }
+
+    Spacer(modifier = Modifier.height(20.dp))
+
+    Button(
+        onClick = onSubmit,
+        enabled = !isSubmitting,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp),
+        shape = RoundedCornerShape(26.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = DobbyGoColors.Purple,
+            disabledContainerColor = DobbyGoColors.Purple.copy(alpha = 0.5f),
+        ),
+    ) {
+        if (isSubmitting) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(22.dp),
+                color = Color.White,
+                strokeWidth = 2.dp,
+            )
+        } else {
+            Text(
+                text = "Enviar calificación",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                color = Color.White,
+            )
+        }
+    }
+    Spacer(modifier = Modifier.height(8.dp))
+    OutlinedButton(
+        onClick = onSkip,
+        enabled = !isSubmitting,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp),
+        shape = RoundedCornerShape(24.dp),
+    ) {
+        Text(
+            text = "Omitir",
+            fontWeight = FontWeight.SemiBold,
+            color = DobbyGoColors.TextSecondary,
+        )
+    }
+}
+
+@Composable
+private fun RatingTagChip(
+    label: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        enabled = enabled,
+        label = {
+            Text(
+                text = label,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            )
+        },
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = DobbyGoColors.PurpleLight,
+            selectedLabelColor = DobbyGoColors.Purple,
+        ),
+    )
 }

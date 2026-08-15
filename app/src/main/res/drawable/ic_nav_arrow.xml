@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tip points UP (north). Rotate marker by headingDegrees so the tip follows travel/route. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- White halo for contrast on the map -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M24,2.5 L42,43 L24,34.5 L6,43 Z" />
+    <!-- Brand onyx arrow (notched base, tip up) -->
+    <path
+        android:fillColor="#FF0D0D0D"
+        android:pathData="M24,5 L39,40.5 L24,32.5 L9,40.5 Z" />
+</vector>

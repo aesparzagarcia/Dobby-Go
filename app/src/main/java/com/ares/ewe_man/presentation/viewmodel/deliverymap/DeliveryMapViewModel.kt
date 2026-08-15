@@ -8,6 +8,7 @@ import com.ares.ewe_man.data.location.LocationProvider
 import com.ares.ewe_man.domain.repository.DirectionsRepository
 import com.ares.ewe_man.domain.repository.DrivingRouteInfo
 import com.ares.ewe_man.domain.repository.OrderRepository
+import com.ares.ewe_man.presentation.ui.map.CourierHeading
 import dagger.hilt.android.lifecycle.HiltViewModel
 import com.google.android.gms.maps.model.LatLng
 import java.util.Locale
@@ -19,14 +20,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.math.abs
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
 import kotlin.math.roundToInt
 
 /** Distance in meters within which we consider the delivery man "arrived" at destination */
 private const val ARRIVAL_RADIUS_METERS = 150.0
+
+/** After marking arrived, wait this long before enabling “call customer”. */
+private const val CALL_CUSTOMER_DELAY_MS = 2 * 60 * 1000L
 
 /** Refresh driving directions + ETA while moving (avoid hammering the API). */
 private const val ROUTE_AND_ETA_REFRESH_MS = 30_000L
@@ -39,6 +39,7 @@ data class DeliveryMapUiState(
     val deliveryAddress: String? = null,
     /** Indicaciones del cliente para la entrega (si el backend las envía). */
     val customerInstructions: String? = null,
+    val customerPhone: String? = null,
     val currentLocation: LatLng? = null,
     val routePoints: List<LatLng> = emptyList(),
     /** Localized duration text from Directions, e.g. "23 min" */
@@ -52,11 +53,23 @@ data class DeliveryMapUiState(
     /** True when backend already has arrival or we just succeeded marking it. */
     val hasMarkedArrived: Boolean = false,
     val isMarkingArrived: Boolean = false,
+    /** True once 2 minutes have passed since arrived and a phone number exists. */
+    val canCallCustomer: Boolean = false,
+    /** Countdown label while waiting to unlock call, e.g. "Podrás llamar en 1:45". */
+    val callCustomerCountdownText: String? = null,
     val deliveryCodeInput: String = "",
     val deliveryCodeValid: Boolean? = null,
     val isVerifyingDeliveryCode: Boolean = false,
     val isMarkingDelivered: Boolean = false,
     val isDelivered: Boolean = false,
+    /** After delivery, show optional customer rating step in the bottom sheet. */
+    val showCustomerRating: Boolean = false,
+    val customerRatingStars: Int = 0,
+    val customerPunctual: Boolean = false,
+    val customerPaysWell: Boolean = false,
+    val customerTipped: Boolean = false,
+    val customerRecommended: Boolean = false,
+    val isSubmittingCustomerRating: Boolean = false,
     val errorMessage: String? = null,
     /** Camera bearing (0=north, clockwise), for heading-up / Waze-style map rotation. */
     val headingDegrees: Float = 0f
@@ -76,6 +89,7 @@ class DeliveryMapViewModel @Inject constructor(
     val uiState: StateFlow<DeliveryMapUiState> = _uiState.asStateFlow()
 
     private var locationPollJob: Job? = null
+    private var callCountdownJob: Job? = null
     private var destinationLatLng: LatLng? = null
     private var lastRouteFetchAt = 0L
     private var previousLatLng: LatLng? = null
@@ -91,6 +105,7 @@ class DeliveryMapViewModel @Inject constructor(
         super.onCleared()
         locationPollJob?.cancel()
         verifyDeliveryCodeJob?.cancel()
+        callCountdownJob?.cancel()
     }
 
     fun loadData() {
@@ -113,11 +128,18 @@ class DeliveryMapViewModel @Inject constructor(
             } else null
             destinationLatLng = deliveryLatLng
             val alreadyArrived = !order.arrivedAtCustomerAt.isNullOrBlank()
+            val phone = order.resolvedCustomerPhone
             _uiState.value = _uiState.value.copy(
                 deliveryLatLng = deliveryLatLng,
                 deliveryAddress = order.deliveryAddress,
-                hasMarkedArrived = alreadyArrived
+                customerPhone = phone,
+                hasMarkedArrived = alreadyArrived,
             )
+            if (alreadyArrived) {
+                val arrivedAt = parseIsoMillis(order.arrivedAtCustomerAt)
+                    ?: System.currentTimeMillis()
+                startCallCustomerCountdown(arrivedAt)
+            }
             locationProvider.getCurrentLocation()
                 .onSuccess { update ->
                     val latLng = update.latLng
@@ -265,12 +287,15 @@ class DeliveryMapViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isMarkingArrived = true, errorMessage = null)
             orderRepository.markArrivedAtCustomer(orderId)
                 .onSuccess {
+                    val now = System.currentTimeMillis()
                     _uiState.value = _uiState.value.copy(
                         isMarkingArrived = false,
                         hasMarkedArrived = true,
                         deliveryCodeInput = "",
                         deliveryCodeValid = null,
+                        canCallCustomer = false,
                     )
+                    startCallCustomerCountdown(now)
                 }
                 .onFailure { e ->
                     _uiState.value = _uiState.value.copy(
@@ -278,6 +303,44 @@ class DeliveryMapViewModel @Inject constructor(
                         errorMessage = e.toUserFacingMessage()
                     )
                 }
+        }
+    }
+
+    private fun startCallCustomerCountdown(arrivedAtMillis: Long) {
+        callCountdownJob?.cancel()
+        callCountdownJob = viewModelScope.launch {
+            while (isActive) {
+                val remainingMs = CALL_CUSTOMER_DELAY_MS - (System.currentTimeMillis() - arrivedAtMillis)
+                val phone = _uiState.value.customerPhone
+                if (remainingMs <= 0L) {
+                    _uiState.value = _uiState.value.copy(
+                        canCallCustomer = !phone.isNullOrBlank(),
+                        callCustomerCountdownText = null,
+                    )
+                    break
+                }
+                val totalSec = ((remainingMs + 999) / 1000).toInt().coerceAtLeast(1)
+                val minutes = totalSec / 60
+                val seconds = totalSec % 60
+                _uiState.value = _uiState.value.copy(
+                    canCallCustomer = false,
+                    callCustomerCountdownText = if (phone.isNullOrBlank()) {
+                        null
+                    } else {
+                        String.format(Locale.getDefault(), "Podrás llamar en %d:%02d", minutes, seconds)
+                    },
+                )
+                delay(1_000L)
+            }
+        }
+    }
+
+    private fun parseIsoMillis(raw: String?): Long? {
+        if (raw.isNullOrBlank()) return null
+        return try {
+            java.time.Instant.parse(raw).toEpochMilli()
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -323,10 +386,13 @@ class DeliveryMapViewModel @Inject constructor(
                 .onSuccess {
                     _uiState.value = _uiState.value.copy(
                         isMarkingDelivered = false,
-                        isDelivered = true
+                        isDelivered = true,
+                        showCustomerRating = true,
                     )
                     locationPollJob?.cancel()
-                    onSuccess()
+                    // Keep map open for optional rating; [onSuccess] runs after skip/submit.
+                    // Stash callback via state is awkward — callers should not auto-navigate.
+                    pendingAfterRating = onSuccess
                 }
                 .onFailure { e ->
                     _uiState.value = _uiState.value.copy(
@@ -337,72 +403,105 @@ class DeliveryMapViewModel @Inject constructor(
         }
     }
 
+    private var pendingAfterRating: (() -> Unit)? = null
+
+    fun setCustomerRatingStars(stars: Int) {
+        val next = if (_uiState.value.customerRatingStars == stars) 0 else stars.coerceIn(0, 5)
+        _uiState.value = _uiState.value.copy(customerRatingStars = next)
+    }
+
+    fun toggleCustomerPunctual() {
+        _uiState.value = _uiState.value.copy(customerPunctual = !_uiState.value.customerPunctual)
+    }
+
+    fun toggleCustomerPaysWell() {
+        _uiState.value = _uiState.value.copy(customerPaysWell = !_uiState.value.customerPaysWell)
+    }
+
+    fun toggleCustomerTipped() {
+        _uiState.value = _uiState.value.copy(customerTipped = !_uiState.value.customerTipped)
+    }
+
+    fun toggleCustomerRecommended() {
+        _uiState.value = _uiState.value.copy(customerRecommended = !_uiState.value.customerRecommended)
+    }
+
+    fun skipCustomerRating() {
+        finishCustomerRatingFlow()
+    }
+
+    fun submitCustomerRating() {
+        if (orderId.isBlank() || _uiState.value.isSubmittingCustomerRating) return
+        val s = _uiState.value
+        val stars = s.customerRatingStars.takeIf { it in 1..5 }
+        val punctual = s.customerPunctual.takeIf { it }
+        val paysWell = s.customerPaysWell.takeIf { it }
+        val tipped = s.customerTipped.takeIf { it }
+        val recommended = s.customerRecommended.takeIf { it }
+        val hasAny =
+            stars != null || punctual == true || paysWell == true || tipped == true || recommended == true
+        if (!hasAny) {
+            finishCustomerRatingFlow()
+            return
+        }
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSubmittingCustomerRating = true, errorMessage = null)
+            orderRepository.rateCustomer(
+                orderId = orderId,
+                stars = stars,
+                punctual = punctual,
+                paysWell = paysWell,
+                tipped = tipped,
+                recommended = recommended,
+            ).onSuccess {
+                _uiState.value = _uiState.value.copy(isSubmittingCustomerRating = false)
+                finishCustomerRatingFlow()
+            }.onFailure { e ->
+                _uiState.value = _uiState.value.copy(
+                    isSubmittingCustomerRating = false,
+                    errorMessage = e.toUserFacingMessage(),
+                )
+            }
+        }
+    }
+
+    private fun finishCustomerRatingFlow() {
+        _uiState.value = _uiState.value.copy(showCustomerRating = false)
+        val done = pendingAfterRating
+        pendingAfterRating = null
+        done?.invoke()
+    }
+
     fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
     }
 
     /**
-     * Heading-up bearing: prefer GPS bearing when moving; otherwise bearing from last→current fix.
-     * Smoothed to reduce jitter (Waze-like).
+     * Tip of the rider arrow: prefer upcoming route direction, then GPS course, then movement.
      */
     private fun computeHeadingForUpdate(
         latLng: LatLng,
         bearingFromGps: Float?,
         speedMps: Float?
     ): Float {
-        // GPS course when available; speed gate avoids stale bearing when nearly stopped (optional).
-        val target: Float? = when {
-            bearingFromGps != null && (speedMps == null || speedMps > 0.12f) ->
-                normalizeHeadingDegrees(bearingFromGps)
-            else -> {
-                // Movement vector: needs small threshold so heading updates at city speeds (every 1s poll).
-                val prev = previousLatLng
-                if (prev != null && distanceInMeters(prev, latLng) > 0.65) {
-                    computeBearingBetween(prev, latLng)
-                } else {
-                    null
-                }
+        val routeHeading = CourierHeading.alongRoute(latLng, _uiState.value.routePoints)
+        val gpsOk = bearingFromGps != null && (speedMps == null || speedMps > 0.12f)
+        val movementHeading = previousLatLng?.let { prev ->
+            if (CourierHeading.distanceMeters(prev, latLng) > 0.65) {
+                CourierHeading.bearingBetween(prev, latLng)
+            } else {
+                null
             }
         }
+        val target = routeHeading
+            ?: (if (gpsOk) CourierHeading.normalizeDegrees(bearingFromGps!!) else null)
+            ?: movementHeading
         if (target != null) {
-            smoothedHeading = smoothHeadingToward(smoothedHeading, target)
+            smoothedHeading = CourierHeading.smoothToward(smoothedHeading, target)
         }
         return smoothedHeading
     }
 
-    private fun normalizeHeadingDegrees(deg: Float): Float =
-        ((deg % 360f) + 360f) % 360f
-
-    /** Stronger correction on sharp turns so the map “follows” the nose like Waze. */
-    private fun smoothHeadingToward(current: Float, target: Float): Float {
-        val diff = ((target - current + 540f) % 360f) - 180f
-        val ad = abs(diff)
-        val alpha = when {
-            ad > 50f -> 0.82f
-            ad > 20f -> 0.58f
-            else -> 0.38f
-        }
-        return normalizeHeadingDegrees(current + diff * alpha)
-    }
-
-    private fun computeBearingBetween(from: LatLng, to: LatLng): Float {
-        val lat1 = Math.toRadians(from.latitude)
-        val lat2 = Math.toRadians(to.latitude)
-        val dLng = Math.toRadians(to.longitude - from.longitude)
-        val y = sin(dLng) * cos(lat2)
-        val x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLng)
-        val bearing = Math.toDegrees(atan2(y, x))
-        return normalizeHeadingDegrees(bearing.toFloat())
-    }
-
-    private fun distanceInMeters(a: LatLng, b: LatLng): Double {
-        val earthRadius = 6_371_000.0
-        val dLat = Math.toRadians(b.latitude - a.latitude)
-        val dLng = Math.toRadians(b.longitude - a.longitude)
-        val x = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(Math.toRadians(a.latitude)) * Math.cos(Math.toRadians(b.latitude)) *
-            Math.sin(dLng / 2) * Math.sin(dLng / 2)
-        val c = 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))
-        return earthRadius * c
-    }
+    private fun distanceInMeters(a: LatLng, b: LatLng): Double =
+        CourierHeading.distanceMeters(a, b)
 }

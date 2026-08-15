@@ -24,6 +24,16 @@ interface OrderRepository {
 
     suspend fun markDelivered(orderId: String, deliveryCode: String): Result<Unit>
 
+    /** Optional courier feedback about the customer after delivery. */
+    suspend fun rateCustomer(
+        orderId: String,
+        stars: Int?,
+        punctual: Boolean?,
+        paysWell: Boolean?,
+        tipped: Boolean?,
+        recommended: Boolean?,
+    ): Result<Int>
+
     /** Report current location to backend so the customer can see it on the tracking map. */
     suspend fun updateLocation(lat: Double, lng: Double): Result<Unit>
 
