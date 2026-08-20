@@ -7,6 +7,7 @@ import com.ares.ewe_man.data.session.SessionEventBus
 import com.ares.ewe_man.data.remote.DeliveryLaunchRefreshOutcome
 import com.ares.ewe_man.data.remote.DeliveryTokenRefreshService
 import com.ares.ewe_man.data.remote.api.DobbyGoApi
+import com.ares.ewe_man.data.remote.model.DeliveryRefreshRequest
 import com.ares.ewe_man.data.remote.model.DeliveryRequestOtpRequest
 import com.ares.ewe_man.data.remote.model.ErrorResponse
 import com.ares.ewe_man.data.remote.model.VerifyOtpRequest
@@ -71,6 +72,14 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun logout() {
+        try {
+            val refresh = sessionManager.refreshToken.first()?.trim().orEmpty()
+            if (refresh.isNotEmpty()) {
+                api.logoutSession(DeliveryRefreshRequest(refresh))
+            }
+        } catch (_: Exception) {
+            // Best-effort server revoke; always clear local session.
+        }
         deliveryRealtimeCoordinator.onLogout()
         sessionManager.clearSession()
     }

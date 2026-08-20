@@ -9,6 +9,7 @@ import com.ares.ewe_man.data.remote.model.DeliveryStatusRequest
 import com.ares.ewe_man.data.remote.model.DeliveryStatusResponse
 import com.ares.ewe_man.data.remote.model.DeliveryRequestOtpRequest
 import com.ares.ewe_man.data.remote.model.DeliveryRequestOtpResponse
+import com.ares.ewe_man.data.remote.model.DeliveryRefreshRequest
 import com.ares.ewe_man.data.remote.model.StartDeliveryRequest
 import com.ares.ewe_man.data.remote.model.StartDeliveryResponse
 import com.ares.ewe_man.data.remote.model.MarkDeliveredRequest
@@ -40,6 +41,10 @@ interface DobbyGoApi {
 
     @POST("auth/delivery/verify-otp")
     suspend fun verifyOtp(@Body body: VerifyOtpRequest): VerifyOtpResponse
+
+    /** Server-side revoke of refresh_sessions (best-effort before local clear). */
+    @POST("auth/delivery/logout")
+    suspend fun logoutSession(@Body body: DeliveryRefreshRequest)
 
     @POST("delivery/push-device")
     suspend fun registerPushDevice(@Body body: RegisterPushDeviceRequest)

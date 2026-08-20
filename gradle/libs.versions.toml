@@ -20,6 +20,7 @@ kotlinxCoroutinesCore = "1.10.2"
 kotlinxCoroutinesPlayServices = "1.10.2"
 roomRuntime = "2.6.1"
 datastore = "1.1.1"
+securityCrypto = "1.0.0"
 coil = "2.5.0"
 play-services-maps = "19.0.0"
 play-services-location = "21.3.0"
@@ -67,6 +68,7 @@ androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomRuntime" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomRuntime" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coilVersion" }
 
 play-services-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "play-services-maps" }

@@ -97,6 +97,7 @@ class TokenRefreshInterceptor @Inject constructor(
         val u = request.url.toString()
         return u.contains("auth/delivery/request-otp") ||
             u.contains("auth/delivery/verify-otp") ||
-            u.contains("auth/delivery/refresh")
+            u.contains("auth/delivery/refresh") ||
+            u.contains("auth/delivery/logout")
     }
 }

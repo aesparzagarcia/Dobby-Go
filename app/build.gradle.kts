@@ -155,8 +155,9 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.play.services)
 
-    // DataStore
+    // DataStore + encrypted token storage (Android Keystore)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.security.crypto)
 
     // ViewModel
     implementation(libs.androidx.lifecycle.viewmodel.ktx)

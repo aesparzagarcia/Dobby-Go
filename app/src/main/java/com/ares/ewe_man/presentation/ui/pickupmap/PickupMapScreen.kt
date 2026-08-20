@@ -6,7 +6,10 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +41,8 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material3.Button
@@ -58,6 +63,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -66,6 +72,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
@@ -81,6 +88,7 @@ import com.ares.ewe_man.R
 import com.ares.ewe_man.core.theme.DobbyGoColors
 import com.ares.ewe_man.data.remote.model.DeliveryOrderItemDto
 import com.ares.ewe_man.presentation.ui.components.SixDigitCodeField
+import com.ares.ewe_man.presentation.ui.map.CourierHeading
 import com.ares.ewe_man.presentation.ui.map.ObserveMapGesturesDisableFollow
 import com.ares.ewe_man.presentation.ui.map.animateToRider
 import com.ares.ewe_man.presentation.viewmodel.pickupmap.PickupMapViewModel
@@ -192,6 +200,8 @@ fun PickupMapScreen(
     val cameraPositionState = rememberCameraPositionState()
     var followRider by remember { mutableStateOf(true) }
     ObserveMapGesturesDisableFollow(cameraPositionState) { followRider = it }
+    var lastFollowTarget by remember { mutableStateOf<LatLng?>(null) }
+    var lastFollowHeading by remember { mutableStateOf<Float?>(null) }
     val pickup = uiState.pickupLatLng
     val current = uiState.currentLocation
     val riderMarkerState = remember { MarkerState(LatLng(0.0, 0.0)) }
@@ -214,9 +224,17 @@ fun PickupMapScreen(
     LaunchedEffect(current?.latitude, current?.longitude, uiState.headingDegrees, followRider) {
         current?.let { latLng ->
             riderMarkerState.position = latLng
-            if (followRider) {
-                cameraPositionState.animateToRider(latLng, uiState.headingDegrees)
-            }
+            if (!followRider) return@let
+            val shouldUpdate = CourierHeading.shouldUpdateFollowCamera(
+                lastTarget = lastFollowTarget,
+                nextTarget = latLng,
+                lastHeading = lastFollowHeading,
+                nextHeading = uiState.headingDegrees,
+            )
+            if (!shouldUpdate) return@let
+            cameraPositionState.animateToRider(latLng, uiState.headingDegrees)
+            lastFollowTarget = latLng
+            lastFollowHeading = uiState.headingDegrees
         }
     }
 
@@ -333,34 +351,6 @@ fun PickupMapScreen(
                     etaIsApproximate = uiState.etaIsApproximate,
                 )
 
-                if (current != null && !imeVisible) {
-                    Surface(
-                        onClick = {
-                            followRider = true
-                            scope.launch {
-                                cameraPositionState.animateToRider(
-                                    current,
-                                    uiState.headingDegrees,
-                                    durationMs = 300,
-                                )
-                            }
-                        },
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(start = 16.dp, bottom = 16.dp),
-                        shape = CircleShape,
-                        color = DobbyGoColors.Surface,
-                        shadowElevation = 4.dp,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.MyLocation,
-                            contentDescription = "Centrar mapa",
-                            tint = DobbyGoColors.Purple,
-                            modifier = Modifier.padding(12.dp),
-                        )
-                    }
-                }
-
                 if (pickup == null) {
                     Surface(
                         modifier = Modifier
@@ -389,9 +379,49 @@ fun PickupMapScreen(
                             modifier = Modifier.padding(16.dp),
                         )
                     }
-                } else {
+                }
+
+                // Recenter stays glued to the top of the bottom sheet (moves down when collapsed).
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth(),
+                ) {
+                    if (current != null && !imeVisible) {
+                        Surface(
+                            onClick = {
+                                followRider = true
+                                lastFollowTarget = null
+                                lastFollowHeading = null
+                                scope.launch {
+                                    cameraPositionState.animateToRider(
+                                        current,
+                                        uiState.headingDegrees,
+                                        durationMs = 300,
+                                    )
+                                    lastFollowTarget = current
+                                    lastFollowHeading = uiState.headingDegrees
+                                }
+                            },
+                            modifier = Modifier
+                                .align(Alignment.Start)
+                                .padding(start = 16.dp, bottom = 12.dp),
+                            shape = CircleShape,
+                            color = DobbyGoColors.Surface,
+                            shadowElevation = 4.dp,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MyLocation,
+                                contentDescription = "Centrar mapa",
+                                tint = DobbyGoColors.Purple,
+                                modifier = Modifier.padding(12.dp),
+                            )
+                        }
+                    }
+
+                    if (pickup != null) {
                         PickupBottomPanel(
-                            modifier = Modifier.align(Alignment.BottomCenter),
+                            modifier = Modifier.fillMaxWidth(),
                             orderId = viewModel.orderId,
                             customerName = uiState.customerName,
                             customerLastName = uiState.customerLastName,
@@ -410,6 +440,7 @@ fun PickupMapScreen(
                                 viewModel.startDelivery(onSuccess = onComenzarEnvio)
                             },
                         )
+                    }
                 }
             }
         }
@@ -579,11 +610,16 @@ private fun PickupBottomPanel(
     val configuration = LocalConfiguration.current
     val maxPanelHeight = (configuration.screenHeightDp * if (compactForKeyboard) 0.50f else 0.72f).dp
     val scrollState = rememberScrollState()
+    var sheetCollapsed by remember { mutableStateOf(false) }
+    var dragAccum by remember { mutableFloatStateOf(0f) }
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(max = maxPanelHeight),
+            .animateContentSize()
+            .then(
+                if (sheetCollapsed) Modifier else Modifier.heightIn(max = maxPanelHeight),
+            ),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         color = DobbyGoColors.Surface,
         shadowElevation = 8.dp,
@@ -591,17 +627,69 @@ private fun PickupBottomPanel(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(scrollState)
-                .padding(horizontal = 20.dp, vertical = 10.dp),
+                .then(
+                    if (sheetCollapsed) {
+                        Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                    } else {
+                        Modifier
+                            .verticalScroll(scrollState)
+                            .padding(horizontal = 20.dp, vertical = 10.dp)
+                    },
+                ),
         ) {
-            Box(
+            Column(
                 modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .width(40.dp)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(DobbyGoColors.Border),
-            )
+                    .fillMaxWidth()
+                    .pointerInput(sheetCollapsed) {
+                        detectVerticalDragGestures(
+                            onDragEnd = {
+                                when {
+                                    dragAccum > 48f -> sheetCollapsed = true
+                                    dragAccum < -48f -> sheetCollapsed = false
+                                }
+                                dragAccum = 0f
+                            },
+                            onVerticalDrag = { _, dragAmount ->
+                                dragAccum += dragAmount
+                            },
+                        )
+                    }
+                    .clickable { sheetCollapsed = !sheetCollapsed },
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(40.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(DobbyGoColors.Border),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = if (sheetCollapsed) "Mostrar detalles" else "Ocultar detalles",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = DobbyGoColors.TextSecondary,
+                    )
+                    Icon(
+                        imageVector = if (sheetCollapsed) {
+                            Icons.Default.KeyboardArrowUp
+                        } else {
+                            Icons.Default.KeyboardArrowDown
+                        },
+                        contentDescription = null,
+                        tint = DobbyGoColors.TextSecondary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+
+            if (sheetCollapsed) {
+                return@Column
+            }
 
             Spacer(modifier = Modifier.height(10.dp))
 

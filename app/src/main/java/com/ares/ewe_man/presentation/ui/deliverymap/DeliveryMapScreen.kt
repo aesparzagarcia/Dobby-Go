@@ -94,6 +94,7 @@ import com.ares.ewe_man.R
 import com.ares.ewe_man.core.theme.DobbyGoColors
 import com.ares.ewe_man.core.util.splitDeliveryAddressForDisplay
 import com.ares.ewe_man.presentation.ui.components.SixDigitCodeField
+import com.ares.ewe_man.presentation.ui.map.CourierHeading
 import com.ares.ewe_man.presentation.ui.map.ObserveMapGesturesDisableFollow
 import com.ares.ewe_man.presentation.ui.map.animateToRider
 import com.ares.ewe_man.presentation.viewmodel.deliverymap.DeliveryMapViewModel
@@ -185,6 +186,8 @@ fun DeliveryMapScreen(
     val cameraPositionState = rememberCameraPositionState()
     var followRider by remember { mutableStateOf(true) }
     ObserveMapGesturesDisableFollow(cameraPositionState) { followRider = it }
+    var lastFollowTarget by remember { mutableStateOf<LatLng?>(null) }
+    var lastFollowHeading by remember { mutableStateOf<Float?>(null) }
     val delivery = uiState.deliveryLatLng
     val current = uiState.currentLocation
     val riderMarkerState = remember { MarkerState(LatLng(0.0, 0.0)) }
@@ -201,9 +204,17 @@ fun DeliveryMapScreen(
     LaunchedEffect(current?.latitude, current?.longitude, uiState.headingDegrees, followRider) {
         current?.let { latLng ->
             riderMarkerState.position = latLng
-            if (followRider) {
-                cameraPositionState.animateToRider(latLng, uiState.headingDegrees)
-            }
+            if (!followRider) return@let
+            val shouldUpdate = CourierHeading.shouldUpdateFollowCamera(
+                lastTarget = lastFollowTarget,
+                nextTarget = latLng,
+                lastHeading = lastFollowHeading,
+                nextHeading = uiState.headingDegrees,
+            )
+            if (!shouldUpdate) return@let
+            cameraPositionState.animateToRider(latLng, uiState.headingDegrees)
+            lastFollowTarget = latLng
+            lastFollowHeading = uiState.headingDegrees
         }
     }
 
@@ -336,12 +347,16 @@ fun DeliveryMapScreen(
                         Surface(
                             onClick = {
                                 followRider = true
+                                lastFollowTarget = null
+                                lastFollowHeading = null
                                 scope.launch {
                                     cameraPositionState.animateToRider(
                                         current,
                                         uiState.headingDegrees,
                                         durationMs = 300,
                                     )
+                                    lastFollowTarget = current
+                                    lastFollowHeading = uiState.headingDegrees
                                 }
                             },
                             modifier = Modifier

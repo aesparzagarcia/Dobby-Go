@@ -477,28 +477,21 @@ class DeliveryMapViewModel @Inject constructor(
     }
 
     /**
-     * Tip of the rider arrow: prefer upcoming route direction, then GPS course, then movement.
+     * Tip of the rider arrow / map bearing: only updates while moving (Waze-style).
      */
     private fun computeHeadingForUpdate(
         latLng: LatLng,
         bearingFromGps: Float?,
         speedMps: Float?
     ): Float {
-        val routeHeading = CourierHeading.alongRoute(latLng, _uiState.value.routePoints)
-        val gpsOk = bearingFromGps != null && (speedMps == null || speedMps > 0.12f)
-        val movementHeading = previousLatLng?.let { prev ->
-            if (CourierHeading.distanceMeters(prev, latLng) > 0.65) {
-                CourierHeading.bearingBetween(prev, latLng)
-            } else {
-                null
-            }
-        }
-        val target = routeHeading
-            ?: (if (gpsOk) CourierHeading.normalizeDegrees(bearingFromGps!!) else null)
-            ?: movementHeading
-        if (target != null) {
-            smoothedHeading = CourierHeading.smoothToward(smoothedHeading, target)
-        }
+        smoothedHeading = CourierHeading.resolveNavigationHeading(
+            current = latLng,
+            previous = previousLatLng,
+            route = _uiState.value.routePoints,
+            bearingFromGps = bearingFromGps,
+            speedMps = speedMps,
+            previousHeading = smoothedHeading,
+        )
         return smoothedHeading
     }
 

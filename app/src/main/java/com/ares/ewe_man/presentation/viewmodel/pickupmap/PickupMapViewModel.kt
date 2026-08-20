@@ -339,21 +339,14 @@ class PickupMapViewModel @Inject constructor(
         bearingFromGps: Float?,
         speedMps: Float?
     ): Float {
-        val routeHeading = CourierHeading.alongRoute(latLng, _uiState.value.routePoints)
-        val gpsOk = bearingFromGps != null && (speedMps == null || speedMps > 0.12f)
-        val movementHeading = previousLatLng?.let { prev ->
-            if (CourierHeading.distanceMeters(prev, latLng) > 0.65) {
-                CourierHeading.bearingBetween(prev, latLng)
-            } else {
-                null
-            }
-        }
-        val target = routeHeading
-            ?: (if (gpsOk) CourierHeading.normalizeDegrees(bearingFromGps!!) else null)
-            ?: movementHeading
-        if (target != null) {
-            smoothedHeading = CourierHeading.smoothToward(smoothedHeading, target)
-        }
+        smoothedHeading = CourierHeading.resolveNavigationHeading(
+            current = latLng,
+            previous = previousLatLng,
+            route = _uiState.value.routePoints,
+            bearingFromGps = bearingFromGps,
+            speedMps = speedMps,
+            previousHeading = smoothedHeading,
+        )
         return smoothedHeading
     }
 
