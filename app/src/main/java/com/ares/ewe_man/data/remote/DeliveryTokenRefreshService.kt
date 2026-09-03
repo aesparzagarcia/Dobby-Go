@@ -95,6 +95,7 @@ class DeliveryTokenRefreshService @Inject constructor(
             noAuthClient.newCall(httpReq).execute().use { resp ->
                 when (resp.code) {
                     401, 403 -> HttpRefreshResult.SessionInvalid
+                    409 -> HttpRefreshResult.TransientFailure
                     in 500..599 -> HttpRefreshResult.TransientFailure
                     else -> {
                         if (!resp.isSuccessful) {
