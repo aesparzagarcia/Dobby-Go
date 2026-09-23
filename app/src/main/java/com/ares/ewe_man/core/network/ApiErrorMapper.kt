@@ -66,7 +66,11 @@ fun Throwable.toUserFacingApiError(): UserFacingApiError {
     val t = unwrap()
     return when (t) {
         is HttpException -> mapHttpException(t)
-        is SocketTimeoutException,
+        is SocketTimeoutException -> UserFacingApiError(
+            ApiErrorKind.CONNECTION,
+            "Tiempo de espera agotado",
+            "El servidor no respondió. Intenta de nuevo.",
+        )
         is UnknownHostException,
         is ConnectException,
         -> UserFacingApiError(ApiErrorKind.CONNECTION, MSG_NETWORK_TITLE, MSG_NETWORK_BODY)
