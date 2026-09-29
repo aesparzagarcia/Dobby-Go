@@ -8,5 +8,5 @@ data class DeliveryStatusRequest(
 
 data class DeliveryStatusResponse(
     @SerializedName("ok") val ok: Boolean = true,
-    @SerializedName("status") val status: String,
+    @SerializedName("status") val status: String? = null,
 )

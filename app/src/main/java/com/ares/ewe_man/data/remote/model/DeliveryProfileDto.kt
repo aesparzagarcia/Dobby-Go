@@ -17,4 +17,5 @@ data class DeliveryProfileDto(
     @SerializedName("current_streak_days") val currentStreakDays: Int,
     @SerializedName("total_deliveries") val totalDeliveries: Int,
     @SerializedName("missions") val missions: List<DeliveryMissionDto>,
+    @SerializedName("week") val week: DeliveryWeekDto? = null,
 )

@@ -5,6 +5,8 @@ import com.ares.ewe_man.data.remote.model.DeliveredOrderResponse
 import com.ares.ewe_man.data.remote.model.MarkArrivedResponse
 import com.ares.ewe_man.data.remote.model.DeliveryOrderDto
 import com.ares.ewe_man.data.remote.model.DeliveryProfileDto
+import com.ares.ewe_man.data.remote.model.DeliveryShiftsDto
+import com.ares.ewe_man.data.remote.model.SaveShiftsRequest
 import com.ares.ewe_man.data.remote.model.DeliveryStatusRequest
 import com.ares.ewe_man.data.remote.model.DeliveryStatusResponse
 import com.ares.ewe_man.data.remote.model.DeliveryRequestOtpRequest
@@ -58,6 +60,15 @@ interface DobbyGoApi {
     @GET("delivery/profile")
     suspend fun getDeliveryProfile(): DeliveryProfileDto
 
+    @POST("delivery/heartbeat")
+    suspend fun heartbeat(@Body body: Map<String, @JvmSuppressWildcards Any> = emptyMap()): DeliveryStatusResponse
+
+    @GET("delivery/shifts")
+    suspend fun getShifts(@Query("week") week: String? = null): DeliveryShiftsDto
+
+    @POST("delivery/shifts")
+    suspend fun saveShifts(@Body body: SaveShiftsRequest): DeliveryShiftsDto
+
     @PATCH("delivery/status")
     suspend fun updateDeliveryStatus(@Body body: DeliveryStatusRequest): DeliveryStatusResponse
 
@@ -69,6 +80,12 @@ interface DobbyGoApi {
 
     @PATCH("delivery/orders/{id}/assign")
     suspend fun assignOrder(@Path("id") orderId: String): AssignOrderResponse
+
+    @POST("delivery/orders/{id}/pass")
+    suspend fun passOrder(
+        @Path("id") orderId: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any> = emptyMap(),
+    ): AssignOrderResponse
 
     @POST("delivery/orders/{id}/verify-pickup-code")
     suspend fun verifyPickupCode(

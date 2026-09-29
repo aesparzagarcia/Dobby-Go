@@ -2,6 +2,7 @@ package com.ares.ewe_man.presentation.ui.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -64,9 +65,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
+import androidx.compose.ui.window.Dialog
 import com.ares.ewe_man.core.theme.DobbyGoColors
 import com.ares.ewe_man.data.remote.model.DeliveryMissionDto
 import com.ares.ewe_man.data.remote.model.DeliveryProfileDto
+import com.ares.ewe_man.data.remote.model.DeliveryWeekDto
+import com.ares.ewe_man.presentation.viewmodel.profile.ProfileUiState
 import com.ares.ewe_man.presentation.viewmodel.profile.ProfileViewModel
 import java.text.NumberFormat
 import java.util.Locale
@@ -115,8 +119,9 @@ fun ProfileScreen(
         }
     }
 
+    Box(modifier = modifier.fillMaxSize()) {
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         containerColor = DobbyGoColors.Background,
         contentWindowInsets = WindowInsets(0.dp),
     ) { padding ->
@@ -181,6 +186,13 @@ fun ProfileScreen(
                                 statusUpdating = uiState.statusUpdating,
                                 onToggleAvailability = { viewModel.setConnectionStatus(it) },
                             )
+                            profile.week?.let { week ->
+                                Spacer(modifier = Modifier.height(16.dp))
+                                ProfileWeekCard(
+                                    week = week,
+                                    onOpenShifts = { viewModel.openShifts() },
+                                )
+                            }
                             Spacer(modifier = Modifier.height(24.dp))
                             Text(
                                 text = "Misiones",
@@ -224,6 +236,16 @@ fun ProfileScreen(
                     }
                 }
             }
+        }
+    }
+        if (uiState.showShifts) {
+            ProfileShiftsDialog(
+                uiState = uiState,
+                onClose = { viewModel.closeShifts() },
+                onSelectWeek = { viewModel.selectWeek(it) },
+                onToggle = { day, slot -> viewModel.toggleClaim(day, slot) },
+                onSave = { viewModel.saveShifts() },
+            )
         }
     }
 }
@@ -678,6 +700,143 @@ private fun ProfileMissionCard(mission: DeliveryMissionDto) {
                     color = DobbyGoColors.Purple,
                     trackColor = DobbyGoColors.PurpleLight,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileWeekCard(
+    week: DeliveryWeekDto,
+    onOpenShifts: () -> Unit,
+) {
+    val hoursProgress = week.nextGoal?.hoursGoalMinutes?.takeIf { it > 0 }?.let {
+        (week.activeMinutes.toFloat() / it).coerceIn(0f, 1f)
+    } ?: 1f
+    val deliveryProgress = week.nextGoal?.deliveriesGoal?.takeIf { it > 0 }?.let {
+        (week.deliveries.toFloat() / it).coerceIn(0f, 1f)
+    } ?: 1f
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = DobbyGoColors.Surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Esta semana", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = DobbyGoColors.TextPrimary)
+                Spacer(modifier = Modifier.weight(1f))
+                Text(week.weeklyLevelLabel, color = DobbyGoColors.Purple, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(week.activeHoursLabel, fontWeight = FontWeight.SemiBold)
+            LinearProgressIndicator(
+                progress = { hoursProgress },
+                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(50)),
+                color = DobbyGoColors.Purple,
+                trackColor = DobbyGoColors.PurpleLight,
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Text("${week.deliveries} pedidos", fontWeight = FontWeight.SemiBold)
+            LinearProgressIndicator(
+                progress = { deliveryProgress },
+                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(50)),
+                color = DobbyGoColors.Purple,
+                trackColor = DobbyGoColors.PurpleLight,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            val bonusText = when {
+                week.weeklyStatus == "UNLOCKED" || week.weeklyStatus == "PAID" ->
+                    "Bono de $${week.weeklyBonusPesos} desbloqueado"
+                week.nextGoal != null -> week.nextGoal.message
+                else -> null
+            }
+            if (bonusText != null) {
+                Text(bonusText, color = DobbyGoColors.TextSecondary, fontSize = 14.sp)
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(DobbyGoColors.PurpleLight.copy(alpha = 0.45f))
+                    .padding(12.dp),
+            ) {
+                Text("Reto de fin de semana", fontWeight = FontWeight.Bold)
+                Text(week.weekend.windowsLabel, fontSize = 12.sp, color = DobbyGoColors.TextSecondary)
+                Text("${week.weekend.deliveries} / ${week.weekend.goal} entregas  ·  +\$${week.weekend.bonusPesos}")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            TextButton(onClick = onOpenShifts) {
+                Text("Mis horarios", color = DobbyGoColors.Purple, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileShiftsDialog(
+    uiState: ProfileUiState,
+    onClose: () -> Unit,
+    onSelectWeek: (Boolean) -> Unit,
+    onToggle: (Int, String) -> Unit,
+    onSave: () -> Unit,
+) {
+    val days = listOf("L", "M", "X", "J", "V", "S", "D")
+    Dialog(onDismissRequest = onClose) {
+        Surface(shape = RoundedCornerShape(20.dp), color = DobbyGoColors.Surface) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Mis horarios", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row {
+                    TextButton(onClick = { onSelectWeek(false) }) {
+                        Text(if (!uiState.editingNextWeek) "Esta semana ✓" else "Esta semana")
+                    }
+                    TextButton(onClick = { onSelectWeek(true) }) {
+                        Text(if (uiState.editingNextWeek) "Siguiente ✓" else "Siguiente")
+                    }
+                }
+                if (uiState.shiftsLoading && uiState.shifts == null) {
+                    CircularProgressIndicator(color = DobbyGoColors.Purple, modifier = Modifier.padding(16.dp))
+                } else {
+                    val slots = uiState.shifts?.slots.orEmpty()
+                    Row {
+                        Spacer(modifier = Modifier.width(56.dp))
+                        days.forEach { d ->
+                            Text(d, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    slots.forEach { slot ->
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                            Text(slot.label.replace(":00", ""), fontSize = 10.sp, modifier = Modifier.width(56.dp))
+                            (1..7).forEach { day ->
+                                val key = "$day-${slot.key}"
+                                val on = uiState.draftClaims.contains(key)
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(2.dp)
+                                        .height(32.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (on) DobbyGoColors.Purple else DobbyGoColors.PurpleLight)
+                                        .clickable { onToggle(day, slot.key) },
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = onSave,
+                        enabled = !uiState.shiftsSaving,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = DobbyGoColors.Purple),
+                    ) {
+                        Text(if (uiState.shiftsSaving) "Guardando…" else "Guardar horarios")
+                    }
+                    TextButton(onClick = onClose, modifier = Modifier.fillMaxWidth()) {
+                        Text("Cerrar")
+                    }
+                }
             }
         }
     }

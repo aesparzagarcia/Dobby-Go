@@ -45,6 +45,15 @@ class OrderRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun passOrder(orderId: String): Result<Unit> {
+        return try {
+            api.passOrder(orderId, emptyMap())
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun verifyPickupCode(orderId: String, pickupCode: String): Result<Boolean> {
         return try {
             val response = api.verifyPickupCode(orderId,

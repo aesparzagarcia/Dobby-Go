@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.Store
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -128,6 +129,7 @@ fun OrderDetailScreen(
                 OrderDetailBottomActions(
                     order = order,
                     isAssigning = uiState.isAssigning,
+                    isPassing = uiState.isPassing,
                     assignEnabled = !uiState.assignBlocked,
                     assignBlockedMessage = uiState.assignBlockedMessage,
                     onAssignToMe = {
@@ -135,6 +137,7 @@ fun OrderDetailScreen(
                             onSuccess = { onOpenPickupMap(viewModel.orderId) },
                         )
                     },
+                    onPass = { viewModel.passOrder(onSuccess = onBack) },
                     onOpenPickupMap = { onOpenPickupMap(viewModel.orderId) },
                     onOpenMap = { onOpenMap(viewModel.orderId) },
                 )
@@ -625,9 +628,11 @@ private fun OrderReminderBox() {
 private fun OrderDetailBottomActions(
     order: DeliveryOrderDto,
     isAssigning: Boolean,
+    isPassing: Boolean,
     assignEnabled: Boolean,
     assignBlockedMessage: String?,
     onAssignToMe: () -> Unit,
+    onPass: () -> Unit,
     onOpenPickupMap: () -> Unit,
     onOpenMap: () -> Unit,
 ) {
@@ -706,6 +711,19 @@ private fun OrderDetailBottomActions(
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp,
                     color = Color.White,
+                )
+            }
+        }
+        if (order.status == "READY_FOR_PICKUP") {
+            TextButton(
+                onClick = onPass,
+                enabled = !isPassing && !isAssigning,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = if (isPassing) "Pasando…" else "Pasar este pedido",
+                    color = DobbyGoColors.TextSecondary,
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
         }

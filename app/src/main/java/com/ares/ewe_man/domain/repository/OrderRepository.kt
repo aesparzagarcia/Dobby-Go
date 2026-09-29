@@ -13,6 +13,8 @@ interface OrderRepository {
 
     suspend fun assignOrder(orderId: String): Result<Unit>
 
+    suspend fun passOrder(orderId: String): Result<Unit>
+
     suspend fun verifyPickupCode(orderId: String, pickupCode: String): Result<Boolean>
 
     suspend fun verifyDeliveryCode(orderId: String, deliveryCode: String): Result<Boolean>

@@ -21,6 +21,7 @@ data class OrderDetailUiState(
     val order: DeliveryOrderDto? = null,
     val isLoading: Boolean = false,
     val isAssigning: Boolean = false,
+    val isPassing: Boolean = false,
     /** No puede asignar: pedido ASSIGNED/ON_DELIVERY o estado del repartidor ON_DELIVERY. */
     val assignBlocked: Boolean = false,
     val assignBlockedMessage: String? = null,
@@ -106,6 +107,24 @@ class OrderDetailViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(
                         isAssigning = false,
                         errorMessage = e.toUserFacingMessage()
+                    )
+                }
+        }
+    }
+
+    fun passOrder(onSuccess: () -> Unit = {}) {
+        if (orderId.isBlank()) return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isPassing = true, errorMessage = null)
+            orderRepository.passOrder(orderId)
+                .onSuccess {
+                    _uiState.value = _uiState.value.copy(isPassing = false)
+                    onSuccess()
+                }
+                .onFailure { e ->
+                    _uiState.value = _uiState.value.copy(
+                        isPassing = false,
+                        errorMessage = e.toUserFacingMessage(),
                     )
                 }
         }
