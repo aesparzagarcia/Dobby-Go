@@ -2,6 +2,13 @@ package com.ares.ewe_man.core.util
 
 import java.util.Locale
 
+/** Nombre guardado de la dirección (Casa, Trabajo). "Home" del API se muestra como Casa. */
+fun friendlyDeliveryAddressLabel(raw: String?): String? {
+    val t = raw?.trim().orEmpty()
+    if (t.isEmpty()) return null
+    return if (t.equals("Home", ignoreCase = true)) "Casa" else t
+}
+
 private val countryTokens = setOf(
     "mexico",
     "méxico",

@@ -92,6 +92,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ares.ewe_man.R
 import com.ares.ewe_man.core.theme.DobbyGoColors
+import com.ares.ewe_man.core.util.friendlyDeliveryAddressLabel
 import com.ares.ewe_man.core.util.splitDeliveryAddressForDisplay
 import com.ares.ewe_man.presentation.ui.components.SixDigitCodeField
 import com.ares.ewe_man.presentation.ui.map.CourierHeading
@@ -379,6 +380,7 @@ fun DeliveryMapScreen(
                         DeliveryBottomPanel(
                             modifier = Modifier.fillMaxWidth(),
                             deliveryAddress = uiState.deliveryAddress,
+                            addressLabel = uiState.deliveryAddressLabel,
                             customerInstructions = uiState.customerInstructions,
                             hasMarkedArrived = uiState.hasMarkedArrived,
                             isNearDestination = uiState.isNearDestination,
@@ -555,6 +557,7 @@ private fun DeliveryRouteStatRow(
 @Composable
 private fun DeliveryBottomPanel(
     deliveryAddress: String?,
+    addressLabel: String? = null,
     customerInstructions: String?,
     hasMarkedArrived: Boolean,
     isNearDestination: Boolean,
@@ -721,6 +724,15 @@ private fun DeliveryBottomPanel(
                         fontSize = 16.sp,
                         color = DobbyGoColors.TextPrimary,
                     )
+                    friendlyDeliveryAddressLabel(addressLabel)?.let { name ->
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = DobbyGoColors.TextPrimary,
+                        )
+                    }
                     deliveryAddress?.takeIf { it.isNotBlank() }?.let { raw ->
                         val (streetLine, regionLine) = splitDeliveryAddressForDisplay(raw)
                         Spacer(modifier = Modifier.height(4.dp))

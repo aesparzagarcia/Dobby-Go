@@ -37,6 +37,7 @@ private const val ROUGH_SPEED_METERS_PER_MIN = 420.0
 data class DeliveryMapUiState(
     val deliveryLatLng: LatLng? = null,
     val deliveryAddress: String? = null,
+    val deliveryAddressLabel: String? = null,
     /** Indicaciones del cliente para la entrega (si el backend las envía). */
     val customerInstructions: String? = null,
     val customerPhone: String? = null,
@@ -132,6 +133,7 @@ class DeliveryMapViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(
                 deliveryLatLng = deliveryLatLng,
                 deliveryAddress = order.deliveryAddress,
+                deliveryAddressLabel = order.resolvedAddressLabel,
                 customerPhone = phone,
                 hasMarkedArrived = alreadyArrived,
             )

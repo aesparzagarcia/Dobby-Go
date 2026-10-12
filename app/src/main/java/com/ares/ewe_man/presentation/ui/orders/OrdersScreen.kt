@@ -76,6 +76,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.ares.ewe_man.core.theme.DobbyGoColors
+import com.ares.ewe_man.core.util.friendlyDeliveryAddressLabel
 import com.ares.ewe_man.core.util.splitDeliveryAddressForDisplay
 import com.ares.ewe_man.data.remote.model.DeliveryOrderDto
 import com.ares.ewe_man.presentation.ui.profile.resolveProfileImageUrl
@@ -529,8 +530,9 @@ private fun DeliveryOrderCard(
         label = "orderCardChevron",
     )
     val (statusTextColor, statusBg) = orderStatusColors(order.status)
+    val addressLabel = friendlyDeliveryAddressLabel(order.resolvedAddressLabel)
     val (addressLine1, addressLine2) = order.deliveryAddress?.let { splitDeliveryAddressForDisplay(it) }
-        ?: ("Sin dirección" to null)
+        ?: ((addressLabel ?: "Sin dirección") to null)
 
     Card(
         modifier = modifier
@@ -681,21 +683,37 @@ private fun DeliveryOrderCard(
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = addressLine1,
-                                fontWeight = FontWeight.SemiBold,
-                                color = DobbyGoColors.TextPrimary,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            if (addressLine2 != null) {
+                            if (addressLabel != null) {
                                 Text(
-                                    text = addressLine2,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = DobbyGoColors.TextSecondary,
-                                    maxLines = 2,
+                                    text = addressLabel,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = DobbyGoColors.TextPrimary,
+                                    maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
+                            }
+                            if (addressLabel == null || order.deliveryAddress?.isNotBlank() == true) {
+                                Text(
+                                    text = addressLine1,
+                                    fontWeight = if (addressLabel != null) FontWeight.Normal else FontWeight.SemiBold,
+                                    color = if (addressLabel != null) DobbyGoColors.TextSecondary else DobbyGoColors.TextPrimary,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = if (addressLabel != null) {
+                                        MaterialTheme.typography.bodySmall
+                                    } else {
+                                        MaterialTheme.typography.bodyMedium
+                                    },
+                                )
+                                if (addressLine2 != null) {
+                                    Text(
+                                        text = addressLine2,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = DobbyGoColors.TextSecondary,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
                             }
                         }
                     }

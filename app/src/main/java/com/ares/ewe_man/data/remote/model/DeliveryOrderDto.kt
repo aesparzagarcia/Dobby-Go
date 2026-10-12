@@ -9,6 +9,8 @@ data class DeliveryOrderDto(
     @SerializedName("serviceFee") val serviceFee: Double = 0.0,
     @SerializedName("deliveryFee") val deliveryFee: Double = 0.0,
     @SerializedName("deliveryAddress") val deliveryAddress: String?,
+    @SerializedName("deliveryAddressLabel") val deliveryAddressLabel: String? = null,
+    @SerializedName("delivery_address_label") val deliveryAddressLabelSnake: String? = null,
     @SerializedName("lat") val lat: Double?,
     @SerializedName("lng") val lng: Double?,
     @SerializedName("arrivedAtCustomerAt") val arrivedAtCustomerAt: String? = null,
@@ -30,6 +32,10 @@ data class DeliveryOrderDto(
 ) {
     val isServicePayment: Boolean
         get() = orderType.equals("SERVICE_PAYMENT", ignoreCase = true) || !pickupCodeRequired
+
+    val resolvedAddressLabel: String?
+        get() = deliveryAddressLabel?.trim()?.takeIf { it.isNotEmpty() }
+            ?: deliveryAddressLabelSnake?.trim()?.takeIf { it.isNotEmpty() }
 
     /** Prefer camelCase; fall back to snake_case from API. */
     val resolvedCustomerPhone: String?

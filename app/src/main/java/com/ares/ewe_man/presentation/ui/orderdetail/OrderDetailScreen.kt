@@ -66,6 +66,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.ares.ewe_man.core.theme.DobbyGoColors
 import com.ares.ewe_man.core.util.absoluteUploadUrl
+import com.ares.ewe_man.core.util.friendlyDeliveryAddressLabel
 import com.ares.ewe_man.core.util.splitDeliveryAddressForDisplay
 import com.ares.ewe_man.data.remote.model.DeliveryOrderDto
 import com.ares.ewe_man.data.remote.model.DeliveryOrderItemDto
@@ -335,8 +336,9 @@ private fun OrderDetailCard(
             HorizontalDivider(color = DobbyGoColors.Border, thickness = 1.dp)
             Spacer(modifier = Modifier.height(10.dp))
 
-            order.deliveryAddress?.takeIf { it.isNotBlank() }?.let { raw ->
-                val (streetLine, regionLine) = splitDeliveryAddressForDisplay(raw)
+            val addressLabel = friendlyDeliveryAddressLabel(order.resolvedAddressLabel)
+            val rawAddress = order.deliveryAddress?.trim()?.takeIf { it.isNotBlank() }
+            if (addressLabel != null || rawAddress != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -354,21 +356,34 @@ private fun OrderDetailCard(
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = streetLine,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = DobbyGoColors.TextPrimary,
-                    lineHeight = 20.sp,
-                )
-                regionLine?.let { line ->
-                    Spacer(modifier = Modifier.height(2.dp))
+                if (addressLabel != null) {
                     Text(
-                        text = line,
+                        text = addressLabel,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = DobbyGoColors.TextSecondary,
+                        fontWeight = FontWeight.Bold,
+                        color = DobbyGoColors.TextPrimary,
                         lineHeight = 20.sp,
                     )
+                }
+                rawAddress?.let { raw ->
+                    val (streetLine, regionLine) = splitDeliveryAddressForDisplay(raw)
+                    if (addressLabel != null) Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = streetLine,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (addressLabel != null) FontWeight.Normal else FontWeight.SemiBold,
+                        color = DobbyGoColors.TextPrimary,
+                        lineHeight = 20.sp,
+                    )
+                    regionLine?.let { line ->
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = line,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = DobbyGoColors.TextSecondary,
+                            lineHeight = 20.sp,
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
             }
