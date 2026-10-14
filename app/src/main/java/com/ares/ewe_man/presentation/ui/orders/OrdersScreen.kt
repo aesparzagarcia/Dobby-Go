@@ -67,19 +67,17 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil3.compose.AsyncImage
 import com.ares.ewe_man.core.theme.DobbyGoColors
 import com.ares.ewe_man.core.util.friendlyDeliveryAddressLabel
 import com.ares.ewe_man.core.util.splitDeliveryAddressForDisplay
 import com.ares.ewe_man.data.remote.model.DeliveryOrderDto
-import com.ares.ewe_man.presentation.ui.profile.resolveProfileImageUrl
+import com.ares.ewe_man.presentation.ui.profile.CourierAvatarImage
 import com.ares.ewe_man.presentation.viewmodel.orders.OrdersTab
 import com.ares.ewe_man.presentation.viewmodel.orders.OrdersViewModel
 import com.ares.ewe_man.core.util.OrderDateFormat
@@ -389,36 +387,14 @@ private fun OrdersHomeHeader(
 
 @Composable
 private fun ProfileAvatar(name: String, photoUrl: String?) {
-    val resolvedUrl = resolveProfileImageUrl(photoUrl)
-    val initial = name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
-
-    if (resolvedUrl != null) {
-        AsyncImage(
-            model = resolvedUrl,
-            contentDescription = null,
-            modifier = Modifier
-                .size(52.dp)
-                .clip(CircleShape)
-                .border(2.dp, DobbyGoColors.PurpleLight, CircleShape),
-            contentScale = ContentScale.Crop,
-        )
-    } else {
-        Box(
-            modifier = Modifier
-                .size(52.dp)
-                .clip(CircleShape)
-                .background(DobbyGoColors.PurpleLight)
-                .border(2.dp, DobbyGoColors.Purple.copy(alpha = 0.2f), CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = initial,
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp,
-                color = DobbyGoColors.Purple,
-            )
-        }
-    }
+    CourierAvatarImage(
+        photoUrl = photoUrl,
+        contentDescription = name.ifBlank { "Foto de perfil" },
+        modifier = Modifier
+            .size(52.dp)
+            .clip(CircleShape)
+            .border(2.dp, DobbyGoColors.PurpleLight, CircleShape),
+    )
 }
 
 @Composable

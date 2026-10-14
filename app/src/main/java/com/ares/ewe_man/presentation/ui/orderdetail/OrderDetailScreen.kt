@@ -55,6 +55,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -64,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
+import com.ares.ewe_man.R
 import com.ares.ewe_man.core.theme.DobbyGoColors
 import com.ares.ewe_man.core.util.absoluteUploadUrl
 import com.ares.ewe_man.core.util.friendlyDeliveryAddressLabel
@@ -542,19 +544,23 @@ private fun OrderProductRow(
             contentAlignment = Alignment.Center,
         ) {
             val imageUrl = item.imageUrl?.takeIf { it.isNotBlank() }
-            if (imageUrl != null) {
-                AsyncImage(
-                    model = absoluteUploadUrl(imageUrl),
-                    contentDescription = name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
-            } else {
+            if (isServicePayment && imageUrl == null) {
                 Icon(
                     imageVector = Icons.Default.ShoppingBag,
                     contentDescription = null,
                     tint = DobbyGoColors.Purple.copy(alpha = 0.6f),
                     modifier = Modifier.size(24.dp),
+                )
+            } else {
+                val placeholder = painterResource(R.drawable.img_product_placeholder)
+                AsyncImage(
+                    model = imageUrl?.let { absoluteUploadUrl(it) },
+                    contentDescription = name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    placeholder = placeholder,
+                    error = placeholder,
+                    fallback = placeholder,
                 )
             }
         }
