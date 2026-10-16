@@ -19,10 +19,19 @@ interface OrderRepository {
 
     suspend fun verifyDeliveryCode(orderId: String, deliveryCode: String): Result<Boolean>
 
-    suspend fun startDelivery(orderId: String, pickupCode: String): Result<Unit>
+    suspend fun startDelivery(
+        orderId: String,
+        pickupCode: String,
+        lat: Double? = null,
+        lng: Double? = null,
+    ): Result<Unit>
 
     /** Courier confirms arrival at the customer address (required before [markDelivered]). */
-    suspend fun markArrivedAtCustomer(orderId: String): Result<Unit>
+    suspend fun markArrivedAtCustomer(
+        orderId: String,
+        lat: Double? = null,
+        lng: Double? = null,
+    ): Result<Unit>
 
     suspend fun markDelivered(orderId: String, deliveryCode: String): Result<Unit>
 

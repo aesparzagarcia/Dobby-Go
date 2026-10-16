@@ -2,6 +2,7 @@ package com.ares.ewe_man.data.remote.api
 
 import com.ares.ewe_man.data.remote.model.AssignOrderResponse
 import com.ares.ewe_man.data.remote.model.DeliveredOrderResponse
+import com.ares.ewe_man.data.remote.model.MarkArrivedRequest
 import com.ares.ewe_man.data.remote.model.MarkArrivedResponse
 import com.ares.ewe_man.data.remote.model.DeliveryOrderDto
 import com.ares.ewe_man.data.remote.model.DeliveryProfileDto
@@ -100,7 +101,10 @@ interface DobbyGoApi {
     ): StartDeliveryResponse
 
     @PATCH("delivery/orders/{id}/arrived")
-    suspend fun markArrivedAtCustomer(@Path("id") orderId: String): MarkArrivedResponse
+    suspend fun markArrivedAtCustomer(
+        @Path("id") orderId: String,
+        @Body body: MarkArrivedRequest = MarkArrivedRequest(),
+    ): MarkArrivedResponse
 
     @POST("delivery/orders/{id}/verify-delivery-code")
     suspend fun verifyDeliveryCode(

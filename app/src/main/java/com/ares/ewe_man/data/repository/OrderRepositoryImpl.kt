@@ -3,6 +3,7 @@ package com.ares.ewe_man.data.repository
 import com.ares.ewe_man.data.remote.api.DobbyGoApi
 import com.ares.ewe_man.data.remote.model.DeliveryOrderDto
 import com.ares.ewe_man.data.remote.model.StartDeliveryRequest
+import com.ares.ewe_man.data.remote.model.MarkArrivedRequest
 import com.ares.ewe_man.data.remote.model.MarkDeliveredRequest
 import com.ares.ewe_man.data.remote.model.RateCustomerRequest
 import com.ares.ewe_man.data.remote.model.VerifyDeliveryCodeRequest
@@ -65,9 +66,17 @@ class OrderRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun startDelivery(orderId: String, pickupCode: String): Result<Unit> {
+    override suspend fun startDelivery(
+        orderId: String,
+        pickupCode: String,
+        lat: Double?,
+        lng: Double?,
+    ): Result<Unit> {
         return try {
-            api.startDelivery(orderId, StartDeliveryRequest(pickupCode = pickupCode))
+            api.startDelivery(
+                orderId,
+                StartDeliveryRequest(pickupCode = pickupCode, lat = lat, lng = lng),
+            )
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -83,9 +92,13 @@ class OrderRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun markArrivedAtCustomer(orderId: String): Result<Unit> {
+    override suspend fun markArrivedAtCustomer(
+        orderId: String,
+        lat: Double?,
+        lng: Double?,
+    ): Result<Unit> {
         return try {
-            api.markArrivedAtCustomer(orderId)
+            api.markArrivedAtCustomer(orderId, MarkArrivedRequest(lat = lat, lng = lng))
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

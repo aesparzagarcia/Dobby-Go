@@ -312,7 +312,41 @@ class PickupMapViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isStartingDelivery = true, errorMessage = null)
-            orderRepository.startDelivery(orderId, if (state.pickupCodeRequired) code else "")
+            val fix = locationProvider.getCurrentLocation().getOrNull()?.latLng
+                ?: state.currentLocation
+            if (fix == null) {
+                _uiState.value = _uiState.value.copy(
+                    isStartingDelivery = false,
+                    errorMessage = "Activa tu ubicación para iniciar el envío.",
+                )
+                return@launch
+            }
+            val dist = distanceToPickupMeters(fix, state.pickupLatLng)
+            if (!isWithinPickupRadius(dist)) {
+                val meters = dist?.roundToInt()
+                _uiState.value = _uiState.value.copy(
+                    isStartingDelivery = false,
+                    currentLocation = fix,
+                    distanceToPickupMeters = dist,
+                    isAtPickupLocation = false,
+                    errorMessage = if (meters != null) {
+                        if (state.isServicePayment) {
+                            "Debes estar en el punto del servicio (máx. 20 m). Estás a $meters m."
+                        } else {
+                            "Debes estar en el restaurante (máx. 20 m). Estás a $meters m."
+                        }
+                    } else {
+                        "No se pudo validar tu ubicación en el punto de recogida."
+                    },
+                )
+                return@launch
+            }
+            orderRepository.startDelivery(
+                orderId = orderId,
+                pickupCode = if (state.pickupCodeRequired) code else "",
+                lat = fix.latitude,
+                lng = fix.longitude,
+            )
                 .onSuccess {
                     _uiState.value = _uiState.value.copy(isStartingDelivery = false)
                     onSuccess()

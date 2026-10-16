@@ -287,7 +287,13 @@ class DeliveryMapViewModel @Inject constructor(
         if (orderId.isBlank()) return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isMarkingArrived = true, errorMessage = null)
-            orderRepository.markArrivedAtCustomer(orderId)
+            val fix = locationProvider.getCurrentLocation().getOrNull()?.latLng
+                ?: _uiState.value.currentLocation
+            orderRepository.markArrivedAtCustomer(
+                orderId = orderId,
+                lat = fix?.latitude,
+                lng = fix?.longitude,
+            )
                 .onSuccess {
                     val now = System.currentTimeMillis()
                     _uiState.value = _uiState.value.copy(
