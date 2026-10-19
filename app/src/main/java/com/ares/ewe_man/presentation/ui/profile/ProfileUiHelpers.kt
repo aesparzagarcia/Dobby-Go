@@ -1,6 +1,6 @@
 package com.ares.ewe_man.presentation.ui.profile
 
-import com.ares.ewe_man.BuildConfig
+import com.ares.ewe_man.core.DevServerStore
 
 /** URL absoluta para Coil; rutas relativas (p. ej. `/uploads/...`) se resuelven contra el host del API. */
 fun resolveProfileImageUrl(profilePhotoUrl: String?): String? {
@@ -8,7 +8,7 @@ fun resolveProfileImageUrl(profilePhotoUrl: String?): String? {
     if (raw.startsWith("http://", ignoreCase = true) || raw.startsWith("https://", ignoreCase = true)) {
         return raw
     }
-    val origin = BuildConfig.BASE_URL
+    val origin = DevServerStore.baseUrl()
         .trim()
         .trimEnd('/')
         .removeSuffix("/api")

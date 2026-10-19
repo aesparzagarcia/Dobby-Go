@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Solo flavor dev: la IP del servidor se escribe en Perfil y puede ser cualquier host HTTP. -->
 <network-security-config>
-    <!-- Dev flavor: allow HTTP to local backend (emulator, LAN IP, adb reverse). -->
     <base-config cleartextTrafficPermitted="true" />
 </network-security-config>

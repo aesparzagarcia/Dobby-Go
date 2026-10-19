@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.window.Dialog
+import com.ares.ewe_man.BuildConfig
 import com.ares.ewe_man.core.theme.DobbyGoColors
 import com.ares.ewe_man.data.remote.model.DeliveryMissionDto
 import com.ares.ewe_man.data.remote.model.DeliveryProfileDto
@@ -109,6 +110,7 @@ fun ProfileScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scroll = rememberScrollState()
+    val serverDialog = rememberDevServerDialogState()
 
     LaunchedEffect(Unit) {
         viewModel.connectionStatusUpdated.collect {
@@ -165,6 +167,18 @@ fun ProfileScreen(
                             ),
                         ) {
                             Text("Reintentar")
+                        }
+                        if (BuildConfig.ENVIRONMENT == "dev") {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(
+                                onClick = { serverDialog.open() },
+                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                    containerColor = DobbyGoColors.Purple,
+                                ),
+                            ) {
+                                Text("Configurar IP")
+                            }
+                            DevServerConnectionDialogs(serverDialog)
                         }
                     }
                 }

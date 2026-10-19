@@ -8,6 +8,9 @@ data class DeliveryOrderDto(
     @SerializedName("total") val total: Double,
     @SerializedName("serviceFee") val serviceFee: Double = 0.0,
     @SerializedName("deliveryFee") val deliveryFee: Double = 0.0,
+    @SerializedName("courierCommission") val courierCommission: Double = 0.0,
+    @SerializedName("courierCommissionRate") val courierCommissionRate: Double = 0.0,
+    @SerializedName("courierPayout") val courierPayout: Double = 0.0,
     @SerializedName("deliveryAddress") val deliveryAddress: String?,
     @SerializedName("deliveryAddressLabel") val deliveryAddressLabel: String? = null,
     @SerializedName("delivery_address_label") val deliveryAddressLabelSnake: String? = null,
@@ -30,6 +33,24 @@ data class DeliveryOrderDto(
     @SerializedName("service_payment_pending") val servicePaymentPending: Boolean = false,
     @SerializedName("items") val items: List<DeliveryOrderItemDto>
 ) {
+    val showsCourierCommission: Boolean
+        get() = courierCommission > 0.0
+
+    val courierCommissionPercentText: String
+        get() {
+            val pct = if (courierCommissionRate > 1.0) courierCommissionRate else courierCommissionRate * 100.0
+            if (pct <= 0.0) return "Comisión de la app"
+            val rounded = kotlin.math.round(pct * 10.0) / 10.0
+            return if (rounded % 1.0 == 0.0) {
+                "Comisión de la app (${rounded.toInt()}%)"
+            } else {
+                "Comisión de la app (${String.format(java.util.Locale.US, "%.1f", rounded)}%)"
+            }
+        }
+
+    val courierTakeHome: Double
+        get() = if (courierPayout > 0.0) courierPayout else deliveryFee - courierCommission
+
     val isServicePayment: Boolean
         get() = orderType.equals("SERVICE_PAYMENT", ignoreCase = true) || !pickupCodeRequired
 

@@ -1,6 +1,6 @@
 package com.ares.ewe_man.di
 
-import com.ares.ewe_man.BuildConfig
+import com.ares.ewe_man.core.DevServerStore
 import com.ares.ewe_man.data.local.datastore.SessionManager
 import com.ares.ewe_man.data.remote.TokenRefreshInterceptor
 import com.ares.ewe_man.data.remote.api.DobbyGoApi
@@ -76,7 +76,7 @@ class NetworkModule {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(BuildConfig.BASE_URL)
+            .baseUrl(DevServerStore.baseUrl())
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

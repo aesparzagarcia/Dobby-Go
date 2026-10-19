@@ -1,6 +1,6 @@
 package com.ares.ewe_man.data.remote
 
-import com.ares.ewe_man.BuildConfig
+import com.ares.ewe_man.core.DevServerStore
 import com.ares.ewe_man.data.local.datastore.SessionManager
 import com.ares.ewe_man.data.remote.model.DeliveryRefreshRequest
 import com.ares.ewe_man.data.remote.model.DeliveryRefreshResponse
@@ -85,7 +85,7 @@ class DeliveryTokenRefreshService @Inject constructor(
         }
 
     private fun executeRefresh(refresh: String): HttpRefreshResult {
-        val url = BuildConfig.BASE_URL.trimEnd('/') + "/auth/delivery/refresh"
+        val url = DevServerStore.baseUrl().trimEnd('/') + "/auth/delivery/refresh"
         val bodyJson = gson.toJson(DeliveryRefreshRequest(refresh))
         val httpReq = Request.Builder()
             .url(url)

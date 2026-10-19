@@ -463,6 +463,46 @@ private fun OrderDetailCard(
                 )
             }
 
+            if (order.showsCourierCommission) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = order.courierCommissionPercentText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = DobbyGoColors.TextSecondary,
+                    )
+                    Text(
+                        text = "−$${String.format(Locale.getDefault(), "%.2f", order.courierCommission)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = DobbyGoColors.TextSecondary,
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Tu ganancia",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = DobbyGoColors.TextPrimary,
+                    )
+                    Text(
+                        text = "$${String.format(Locale.getDefault(), "%.2f", order.courierTakeHome)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = DobbyGoColors.TextPrimary,
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(6.dp))
 
             Row(
