@@ -53,6 +53,8 @@ fun ProfileBuildFooter(modifier: Modifier = Modifier) {
             .padding(top = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        CheckForUpdatesButton()
+        Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = "Versión ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
             style = MaterialTheme.typography.bodySmall,

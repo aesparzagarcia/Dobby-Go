@@ -82,6 +82,7 @@ data class DeliveryOrderItemDto(
     @SerializedName("price") val price: Double,
     @SerializedName("amount") val amount: Double? = null,
     @SerializedName("imageUrl") val imageUrl: String? = null,
+    @SerializedName("choicesLabel") val choicesLabel: String? = null,
 ) {
     val displayAmount: Double get() = amount ?: price
 }

@@ -612,6 +612,13 @@ private fun OrderProductRow(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+            item.choicesLabel?.takeIf { it.isNotBlank() }?.let { choices ->
+                Text(
+                    text = choices,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = DobbyGoColors.TextSecondary,
+                )
+            }
             if (isServicePayment) {
                 Text(
                     text = "Número: ${item.serviceNumber?.takeIf { it.isNotBlank() } ?: "—"}",
