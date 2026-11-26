@@ -66,6 +66,7 @@ import androidx.compose.ui.window.Dialog
 import com.ares.ewe_man.BuildConfig
 import com.ares.ewe_man.core.theme.DobbyGoColors
 import com.ares.ewe_man.data.remote.model.DeliveryMissionDto
+import com.ares.ewe_man.data.remote.model.DeliveryCashDto
 import com.ares.ewe_man.data.remote.model.DeliveryProfileDto
 import com.ares.ewe_man.data.remote.model.DeliveryWeekDto
 import com.ares.ewe_man.presentation.viewmodel.profile.ProfileUiState
@@ -197,6 +198,10 @@ fun ProfileScreen(
                                 statusUpdating = uiState.statusUpdating,
                                 onToggleAvailability = { viewModel.setConnectionStatus(it) },
                             )
+                            profile.cash?.let { cash ->
+                                Spacer(modifier = Modifier.height(16.dp))
+                                ProfileCashCard(cash = cash)
+                            }
                             profile.week?.let { week ->
                                 Spacer(modifier = Modifier.height(16.dp))
                                 ProfileWeekCard(
@@ -695,6 +700,80 @@ private fun ProfileMissionCard(mission: DeliveryMissionDto) {
             }
         }
     }
+}
+
+@Composable
+private fun ProfileCashCard(cash: DeliveryCashDto) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = DobbyGoColors.Surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "En tu bolsa",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = DobbyGoColors.TextPrimary,
+            )
+            Text(text = "Hoy", fontSize = 12.sp, color = DobbyGoColors.TextSecondary)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = cash.expectedCash?.let { mxMoney(it) } ?: "Sin fondo",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = DobbyGoColors.TextPrimary,
+            )
+            Text(
+                text = "Fondo + tarifa de uso + IVA + envío. Los productos se pagan en la tienda y el cliente los reembolsa.",
+                fontSize = 12.sp,
+                color = DobbyGoColors.TextSecondary,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            cashLine("Fondo", cash.openingAmount?.let { mxMoney(it) } ?: "—")
+            cashLine("Productos", mxMoney(cash.productsSubtotal))
+            cashLine("Tarifa de uso", mxMoney(cash.serviceFeeNet))
+            cashLine("IVA", mxMoney(cash.serviceFeeIva))
+            cashLine("Envío", mxMoney(cash.deliveryFees))
+            cashLine("Total del cliente", mxMoney(cash.customerTotal))
+            cashLine("Comisión Dobbi", mxMoney(cash.courierCommission))
+            cashLine("Tu ganancia", mxMoney(cash.courierPayout))
+            if (cash.inRouteCount > 0) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = if (cash.inRouteCount == 1) {
+                        "Hay 1 pedido en camino. Ya pagaste ${mxMoney(cash.inRouteProducts)} y el cliente todavía no paga, así que eso se resta."
+                    } else {
+                        "Hay ${cash.inRouteCount} pedidos en camino. Ya pagaste ${mxMoney(cash.inRouteProducts)} y el cliente todavía no paga, así que eso se resta."
+                    },
+                    fontSize = 12.sp,
+                    color = DobbyGoColors.TextPrimary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(DobbyGoColors.PurpleLight, RoundedCornerShape(12.dp))
+                        .padding(10.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun cashLine(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(text = label, fontSize = 14.sp, color = DobbyGoColors.TextSecondary)
+        Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = DobbyGoColors.TextPrimary)
+    }
+}
+
+private fun mxMoney(value: Double): String {
+    return NumberFormat.getCurrencyInstance(Locale("es", "MX")).format(value)
 }
 
 @Composable

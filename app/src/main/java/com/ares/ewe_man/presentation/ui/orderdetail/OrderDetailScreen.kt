@@ -94,6 +94,9 @@ private fun formatCustomerFullName(order: DeliveryOrderDto): String? {
     return parts.joinToString(" ").takeIf { it.isNotBlank() }
 }
 
+private fun orderHasBottomActions(order: DeliveryOrderDto): Boolean =
+    order.status == "READY_FOR_PICKUP" || order.status == "ASSIGNED" || order.status == "ON_DELIVERY"
+
 private fun orderStatusColors(status: String): Pair<Color, Color> = when (status) {
     "READY_FOR_PICKUP" -> DobbyGoColors.Blue to DobbyGoColors.BlueLight
     "ASSIGNED" -> DobbyGoColors.Purple to DobbyGoColors.PurpleLight
@@ -173,15 +176,21 @@ fun OrderDetailScreen(
                 }
             }
             else -> {
+                val order = uiState.order!!
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                        .padding(horizontal = 20.dp)
+                        .padding(top = 12.dp, bottom = 24.dp)
+                        .then(
+                            if (orderHasBottomActions(order)) Modifier
+                            else Modifier.navigationBarsPadding(),
+                        ),
                 ) {
                     OrderDetailCard(
-                        order = uiState.order!!,
+                        order = order,
                         assignBlocked = uiState.assignBlocked,
                         assignBlockedMessage = uiState.assignBlockedMessage,
                     )
