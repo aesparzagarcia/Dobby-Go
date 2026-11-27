@@ -169,6 +169,8 @@ fun ProfileScreen(
                         ) {
                             Text("Reintentar")
                         }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        CheckForUpdatesButton()
                         if (BuildConfig.ENVIRONMENT == "dev") {
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(
@@ -226,6 +228,8 @@ fun ProfileScreen(
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
+                        CheckForUpdatesButton()
+                        Spacer(modifier = Modifier.height(12.dp))
                         OutlinedButton(
                             onClick = onLogout,
                             modifier = Modifier

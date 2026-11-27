@@ -7,14 +7,17 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
@@ -38,6 +41,7 @@ import com.google.android.play.core.install.InstallStateUpdatedListener
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.InstallStatus
 import com.google.android.play.core.install.model.UpdateAvailability
+import com.ares.ewe_man.core.theme.DobbyGoColors
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -117,17 +121,26 @@ fun CheckForUpdatesButton(modifier: Modifier = Modifier) {
         enabled = !checking,
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp),
+            .height(52.dp),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, DobbyGoColors.Primary),
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = DobbyGoColors.Primary,
+        ),
     ) {
         if (checking) {
-            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+            CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp,
+                color = DobbyGoColors.Primary,
+            )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Buscando…")
+            Text("Buscando…", fontWeight = FontWeight.SemiBold)
         } else {
             Icon(
                 imageVector = Icons.Outlined.SystemUpdate,
                 contentDescription = null,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(20.dp),
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text("Buscar actualizaciones", fontWeight = FontWeight.SemiBold)
